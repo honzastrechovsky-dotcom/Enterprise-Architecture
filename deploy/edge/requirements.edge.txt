@@ -1,0 +1,12 @@
+# Edge deployment requirements - minimal footprint
+# NO GPU dependencies, NO heavy ML frameworks
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+sqlalchemy[asyncio]>=2.0.36
+aiosqlite>=0.20.0
+httpx>=0.28.0
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
+structlog>=24.0.0
+PyYAML>=6.0.0
+PyJWT[crypto]>=2.10.0

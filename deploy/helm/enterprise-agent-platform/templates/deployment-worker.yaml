@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "enterprise-agent-platform.fullname" . }}-worker
+  labels:
+    {{- include "enterprise-agent-platform.worker.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.worker.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "enterprise-agent-platform.worker.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      labels:
+        {{- include "enterprise-agent-platform.worker.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "enterprise-agent-platform.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: worker
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+          {{- toYaml .Values.worker.securityContext | nindent 10 }}
+        # Override command to run background worker instead of API server
+        command: ["python", "-m", "src.background_worker"]
+        env:
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: environment
+        - name: DEBUG
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: debug
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: database-url
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: redis-url
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: secret-key
+        - name: LITELLM_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: litellm-base-url
+        - name: LITELLM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: litellm-api-key
+        - name: LITELLM_DEFAULT_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: litellm-default-model
+        - name: MODEL_ROUTING_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: model-routing-enabled
+        - name: MODEL_LIGHT
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: model-light
+        - name: MODEL_STANDARD
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: model-standard
+        - name: MODEL_HEAVY
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: model-heavy
+        - name: BACKGROUND_WORKER_CONCURRENCY
+          value: "{{ .Values.worker.concurrency }}"
+        - name: ENABLE_TELEMETRY
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: enable-telemetry
+        - name: OTLP_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: otlp-endpoint
+        resources:
+          {{- toYaml .Values.worker.resources | nindent 10 }}
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: uploads
+          mountPath: /app/uploads
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: uploads
+        emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

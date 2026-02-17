@@ -1,0 +1,261 @@
+{
+  "dashboard": {
+    "title": "Enterprise Agent Platform - Overview",
+    "uid": "enterprise-agent-platform-overview",
+    "version": 1,
+    "timezone": "browser",
+    "editable": true,
+    "graphTooltip": 1,
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s",
+    "templating": {
+      "list": [
+        {
+          "name": "tenant_id",
+          "type": "query",
+          "label": "Tenant",
+          "query": "label_values(http_requests_total, tenant_id)",
+          "datasource": "Prometheus",
+          "allValue": ".*",
+          "includeAll": true,
+          "multi": false,
+          "refresh": 2
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Request Rate (req/s)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{tenant_id=~\"$tenant_id\"}[5m])",
+            "legendFormat": "{{method}} {{endpoint}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"label": "req/s", "format": "short"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Error Rate (%)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "100 * (rate(http_requests_total{tenant_id=~\"$tenant_id\",status=~\"5..\"}[5m]) / rate(http_requests_total{tenant_id=~\"$tenant_id\"}[5m]))",
+            "legendFormat": "Error Rate",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"label": "%", "format": "percent"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Request Latency (P50/P95/P99)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{tenant_id=~\"$tenant_id\"}[5m]))",
+            "legendFormat": "P50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{tenant_id=~\"$tenant_id\"}[5m]))",
+            "legendFormat": "P95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{tenant_id=~\"$tenant_id\"}[5m]))",
+            "legendFormat": "P99",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {"label": "seconds", "format": "s"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Active Connections & Agent Runs",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "active_connections",
+            "legendFormat": "Active Connections",
+            "refId": "A"
+          },
+          {
+            "expr": "active_agent_runs",
+            "legendFormat": "Active Agent Runs",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"label": "count", "format": "short"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 5,
+        "title": "LLM Token Usage (tokens/s)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "rate(llm_tokens_total{tenant_id=~\"$tenant_id\",token_type=\"prompt\"}[5m])",
+            "legendFormat": "Prompt Tokens - {{model}}",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(llm_tokens_total{tenant_id=~\"$tenant_id\",token_type=\"completion\"}[5m])",
+            "legendFormat": "Completion Tokens - {{model}}",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"label": "tokens/s", "format": "short"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 6,
+        "title": "LLM Request Latency (P95)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(llm_request_duration_seconds_bucket{tenant_id=~\"$tenant_id\"}[5m]))",
+            "legendFormat": "{{model}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"label": "seconds", "format": "s"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Token Budget Remaining",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "token_budget_remaining{tenant_id=~\"$tenant_id\",period=\"daily\"}",
+            "legendFormat": "Daily - {{tenant_id}}",
+            "refId": "A"
+          },
+          {
+            "expr": "token_budget_remaining{tenant_id=~\"$tenant_id\",period=\"monthly\"}",
+            "legendFormat": "Monthly - {{tenant_id}}",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"label": "tokens", "format": "short"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Estimated Cost per Hour ($)",
+        "type": "singlestat",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+        "targets": [
+          {
+            "expr": "sum(rate(llm_tokens_total{tenant_id=~\"$tenant_id\"}[1h])) * 0.00002 * 3600",
+            "refId": "A"
+          }
+        ],
+        "format": "currencyUSD",
+        "sparkline": {
+          "show": true,
+          "full": false
+        }
+      },
+      {
+        "id": 9,
+        "title": "Agent Execution Rate (runs/s)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
+        "targets": [
+          {
+            "expr": "rate(agent_run_duration_seconds_count{tenant_id=~\"$tenant_id\"}[5m])",
+            "legendFormat": "{{agent_type}} - {{status}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"label": "runs/s", "format": "short"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Agent Execution Latency (P95)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(agent_run_duration_seconds_bucket{tenant_id=~\"$tenant_id\"}[5m]))",
+            "legendFormat": "{{agent_type}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"label": "seconds", "format": "s"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Tool Call Rate (calls/s)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 40},
+        "targets": [
+          {
+            "expr": "rate(tool_calls_total{tenant_id=~\"$tenant_id\"}[5m])",
+            "legendFormat": "{{tool_name}} - success={{success}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"label": "calls/s", "format": "short"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Tool Success Rate (%)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 40},
+        "targets": [
+          {
+            "expr": "100 * (rate(tool_calls_total{tenant_id=~\"$tenant_id\",success=\"true\"}[5m]) / rate(tool_calls_total{tenant_id=~\"$tenant_id\"}[5m]))",
+            "legendFormat": "{{tool_name}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"label": "%", "format": "percent"},
+          {"format": "short"}
+        ]
+      }
+    ]
+  }
+}

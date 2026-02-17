@@ -1,0 +1,114 @@
+Proprietary Software License
+
+Copyright (c) 2025-2026 Jan Střechovský (Honza). All rights reserved.
+
+This software and associated documentation files (the "Software") are the
+intellectual property of Jan Střechovský, developed independently on personal
+infrastructure and time, outside any employment relationship or work duties.
+
+================================================================================
+GRANT OF LICENSE
+================================================================================
+
+The Software is licensed, not sold. The following usage rights are granted:
+
+1. EVALUATION LICENSE (Default)
+   This Software may be evaluated for internal assessment purposes only.
+   No production deployment, modification, or redistribution is permitted
+   without a separate written license agreement.
+
+2. INTERNAL USE LICENSE
+   A non-exclusive, non-transferable, revocable license for internal use
+   may be granted to a specific organization in writing (including by email).
+   This license:
+   - Permits deployment and internal use within a single organization
+   - Does NOT transfer any intellectual property rights to the licensee
+   - Does NOT permit redistribution, sublicensing, or resale
+   - Does NOT permit removal of copyright notices or attribution
+   - Requires all derivative works to remain the property of the original author
+   - May be revoked with 30 days written notice by the author
+
+3. COMMERCIAL DEPLOYMENT LICENSE
+   A separate Commercial Deployment License may be granted to specific
+   organizations for production use and/or redistribution,
+   subject to terms and pricing agreed in a separate written agreement.
+
+================================================================================
+RESTRICTIONS
+================================================================================
+
+- No redistribution, sublicensing, or resale without written consent
+- No claim of ownership by any deploying or licensing organization
+- No removal of copyright notices, attribution, or license files
+- Derivative works remain the intellectual property of the original author
+- The Software may not be used to train machine learning models without consent
+
+================================================================================
+ATTRIBUTION
+================================================================================
+
+All deployments must maintain visible attribution to the original author
+in documentation, about/help sections, and any public-facing materials:
+"Powered by Enterprise Agent Platform, developed by Jan Střechovský"
+
+================================================================================
+DATA PROCESSING
+================================================================================
+
+The Software is designed to process organizational data. The licensee is
+responsible for ensuring that their use complies with applicable data
+protection regulations, including the General Data Protection Regulation
+(GDPR, Regulation (EU) 2016/679). The author provides no data processing
+agreement by default; a separate Data Processing Agreement (DPA) must be
+executed prior to any processing of personal data in production environments.
+
+================================================================================
+LIMITATION OF LIABILITY
+================================================================================
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+
+IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM,
+OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE, INCLUDING BUT NOT LIMITED TO INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES, OR LOSS OF DATA OR PROFITS, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+THE AUTHOR'S TOTAL CUMULATIVE LIABILITY ARISING OUT OF OR RELATED TO THIS
+LICENSE SHALL NOT EXCEED THE AMOUNT PAID BY THE LICENSEE FOR THE SOFTWARE
+IN THE TWELVE (12) MONTHS PRECEDING THE CLAIM.
+
+================================================================================
+TERMINATION
+================================================================================
+
+This license is effective until terminated.
+
+The author may terminate this license immediately upon written notice if:
+(a) the licensee breaches any provision of this license and fails to cure
+    such breach within 14 days of written notice;
+(b) the licensee challenges the author's ownership or copyright in the Software;
+(c) the licensee becomes insolvent or subject to insolvency proceedings.
+
+Upon termination, the licensee must cease all use of the Software and destroy
+all copies in their possession. Sections on Restrictions, Limitation of
+Liability, and Governing Law survive termination.
+
+================================================================================
+GOVERNING LAW AND DISPUTE RESOLUTION
+================================================================================
+
+This license shall be governed by and construed in accordance with the laws of
+the Czech Republic, including the Czech Copyright Act (Zákon č. 121/2000 Sb.,
+autorský zákon) and the Civil Code (Zákon č. 89/2012 Sb.), without regard to
+conflict of law principles.
+
+Any disputes arising from or in connection with this license shall be subject
+to the exclusive jurisdiction of the courts of the Czech Republic.
+
+================================================================================
+
+For licensing inquiries: honza.strechovsky@gmail.com

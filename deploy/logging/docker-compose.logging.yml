@@ -1,0 +1,118 @@
+version: "3.9"
+
+# ============================================================
+# Log Aggregation Stack — Loki + Promtail
+#
+# Usage (standalone):
+#   docker compose -f docker-compose.yml \
+#                  -f deploy/logging/docker-compose.logging.yml up -d
+#
+# Usage (extend via env):
+#   COMPOSE_FILE=docker-compose.yml:deploy/logging/docker-compose.logging.yml
+# ============================================================
+
+services:
+  # ----------------------------------------------------------
+  # Loki — Log Aggregation Backend
+  # Stores and indexes logs from all Docker services.
+  # Retention: 30 days (configured in loki-config.yml)
+  # Port 3100: HTTP API (Promtail push + Grafana datasource)
+  # ----------------------------------------------------------
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./deploy/logging/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki-data:/loki
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 -O /dev/null http://localhost:3100/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - app-net
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Promtail — Log Collection Agent
+  # Tails Docker container logs via the Docker socket.
+  # Parses structlog JSON output and forwards to Loki.
+  # Port 9080: HTTP API (metrics + ready endpoint)
+  # ----------------------------------------------------------
+  promtail:
+    image: grafana/promtail:3.3.2
+    container_name: promtail
+    ports:
+      - "9080:9080"
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ./deploy/logging/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      # Docker socket for container log discovery
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Host log files (for system-level log collection if needed)
+      - /var/log:/var/log:ro
+    depends_on:
+      loki:
+        condition: service_healthy
+    networks:
+      - app-net
+    restart: unless-stopped
+    # Promtail needs to run as root to read Docker socket on some hosts.
+    # For rootless Docker, remove this and ensure the socket is readable.
+    user: root
+
+  # ----------------------------------------------------------
+  # Grafana — Visualization (optional but recommended)
+  # Provides dashboards for Loki queries, Prometheus metrics,
+  # and the existing llm-performance / overview dashboards.
+  # Port 3000: Web UI (admin / admin — change in production)
+  # ----------------------------------------------------------
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      # Allow embedding in iframes (useful for internal dashboards)
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      # Disable analytics/phone-home
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      # Pre-provision Loki datasource
+      - ./deploy/logging/grafana-datasources.yml:/etc/grafana/provisioning/datasources/loki.yml:ro
+      # Pre-provision existing dashboards
+      - ./deploy/grafana/dashboards:/etc/grafana/provisioning/dashboards/json:ro
+      - ./deploy/logging/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+    depends_on:
+      loki:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 -O /dev/null http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - app-net
+    restart: unless-stopped
+
+volumes:
+  loki-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+# Reuse the existing app network so Promtail can reach the api container
+networks:
+  app-net:
+    external: true
+    name: enterprise-agent-platform-v3_app-net

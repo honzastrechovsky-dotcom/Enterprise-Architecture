@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "enterprise-agent-platform.fullname" . }}
+  labels:
+    {{- include "enterprise-agent-platform.labels" . | nindent 4 }}
+data:
+  # Application
+  environment: {{ .Values.config.environment | quote }}
+  debug: {{ .Values.config.debug | quote }}
+
+  # Database
+  db-echo-sql: {{ .Values.config.dbEchoSql | quote }}
+
+  # Redis
+  redis-url: {{ include "enterprise-agent-platform.redisUrl" . | quote }}
+
+  # LiteLLM
+  litellm-base-url: {{ include "enterprise-agent-platform.litellmBaseUrl" . | quote }}
+  litellm-default-model: {{ .Values.config.litellmDefaultModel | quote }}
+  litellm-embedding-model: {{ .Values.config.litellmEmbeddingModel | quote }}
+
+  # Model Routing & Token Economy
+  model-routing-enabled: {{ .Values.config.modelRoutingEnabled | quote }}
+  model-light: {{ .Values.config.modelLight | quote }}
+  model-standard: {{ .Values.config.modelStandard | quote }}
+  model-heavy: {{ .Values.config.modelHeavy | quote }}
+  token-budget-daily: {{ .Values.config.tokenBudgetDaily | quote }}
+  token-budget-monthly: {{ .Values.config.tokenBudgetMonthly | quote }}
+
+  # OIDC / Auth
+  oidc-issuer-url: {{ .Values.config.oidcIssuerUrl | quote }}
+  oidc-client-id: {{ .Values.config.oidcClientId | quote }}
+  oidc-audience: {{ .Values.config.oidcAudience | quote }}
+
+  # Rate Limiting
+  rate-limit-per-minute: {{ .Values.config.rateLimitPerMinute | quote }}
+
+  # RAG / Document Processing
+  chunk-size-tokens: {{ .Values.config.chunkSizeTokens | quote }}
+  chunk-overlap-tokens: {{ .Values.config.chunkOverlapTokens | quote }}
+  vector-top-k: {{ .Values.config.vectorTopK | quote }}
+  embedding-dimensions: {{ .Values.config.embeddingDimensions | quote }}
+
+  # Infrastructure
+  background-worker-concurrency: {{ .Values.config.backgroundWorkerConcurrency | quote }}
+  enable-telemetry: {{ .Values.config.enableTelemetry | quote }}
+  otlp-endpoint: {{ .Values.config.otlpEndpoint | quote }}

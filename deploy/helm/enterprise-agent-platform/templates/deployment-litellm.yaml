@@ -1,0 +1,86 @@
+{{- if .Values.litellm.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "enterprise-agent-platform.fullname" . }}-litellm
+  labels:
+    {{- include "enterprise-agent-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: litellm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "enterprise-agent-platform.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: litellm
+  template:
+    metadata:
+      labels:
+        {{- include "enterprise-agent-platform.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: litellm
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: litellm
+        image: "{{ .Values.litellm.image.repository }}:{{ .Values.litellm.image.tag }}"
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        ports:
+        - name: http
+          containerPort: {{ .Values.litellm.port }}
+          protocol: TCP
+        env:
+        - name: LITELLM_MASTER_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: litellm-api-key
+        command: ["litellm", "--port", "{{ .Values.litellm.port }}"]
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        resources:
+          {{- toYaml .Values.litellm.resources | nindent 10 }}
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "enterprise-agent-platform.fullname" . }}-litellm
+  labels:
+    {{- include "enterprise-agent-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: litellm
+spec:
+  type: ClusterIP
+  ports:
+  - port: {{ .Values.litellm.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "enterprise-agent-platform.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: litellm
+{{- end }}

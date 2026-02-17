@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "enterprise-agent-platform.fullname" . }}-api
+  labels:
+    {{- include "enterprise-agent-platform.api.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+  - port: {{ .Values.api.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "enterprise-agent-platform.api.selectorLabels" . | nindent 4 }}

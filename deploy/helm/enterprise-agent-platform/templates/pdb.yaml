@@ -1,0 +1,13 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "enterprise-agent-platform.fullname" . }}-api
+  labels:
+    {{- include "enterprise-agent-platform.api.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "enterprise-agent-platform.api.selectorLabels" . | nindent 6 }}
+{{- end }}

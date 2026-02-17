@@ -1,0 +1,142 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: warn
+
+positions:
+  # Persists read positions so Promtail resumes after restart
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    # Backoff settings for resilience
+    backoff_config:
+      min_period: 500ms
+      max_period: 5m
+      max_retries: 10
+    # Batch settings for throughput
+    batchwait: 1s
+    batchsize: 1048576  # 1 MiB
+
+scrape_configs:
+  # ------------------------------------------------------------------ #
+  # Docker container logs via Docker socket
+  # Scrapes all containers on the host that have logs in /var/lib/docker
+  # ------------------------------------------------------------------ #
+  - job_name: docker-containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 15s
+        filters:
+          # Only collect containers that belong to our compose project
+          - name: label
+            values: ["com.docker.compose.project"]
+
+    relabel_configs:
+      # Extract container name as a label
+      - source_labels: [__meta_docker_container_name]
+        regex: /(.*)
+        target_label: container
+      # Extract compose service name
+      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
+        target_label: service
+      # Extract compose project name
+      - source_labels: [__meta_docker_container_label_com_docker_compose_project]
+        target_label: compose_project
+      # Keep the container log stream (stdout/stderr)
+      - source_labels: [__meta_docker_container_log_stream]
+        target_label: logstream
+      # Static job label
+      - target_label: job
+        replacement: docker-containers
+
+    pipeline_stages:
+      # ---------------------------------------------------------------- #
+      # Stage 1: Attempt JSON parsing (structlog production output)
+      # If this fails, the log line falls through as plain text
+      # ---------------------------------------------------------------- #
+      - json:
+          expressions:
+            # Core structlog fields
+            level: level
+            event: event
+            logger: logger
+            timestamp: timestamp
+            # Request context fields
+            request_id: request_id
+            tenant_id: tenant_id
+            user_id: user_id
+            # Trace correlation
+            trace_id: trace_id
+            span_id: span_id
+            # Agent context
+            agent_id: agent_id
+            agent_type: agent_type
+
+      # ---------------------------------------------------------------- #
+      # Stage 2: Promote parsed fields as Loki labels
+      # Only high-cardinality-safe fields become labels; the rest are
+      # available via log line JSON for LogQL filtering
+      # ---------------------------------------------------------------- #
+      - labels:
+          level:
+          service:
+          logger:
+          # tenant_id has bounded cardinality in enterprise multi-tenant setups
+          tenant_id:
+
+      # ---------------------------------------------------------------- #
+      # Stage 3: Normalise log level values
+      # structlog uses lowercase (info, warning, error, critical)
+      # ---------------------------------------------------------------- #
+      - template:
+          source: level
+          template: "{{ ToLower .Value }}"
+
+      # ---------------------------------------------------------------- #
+      # Stage 4: Set timestamp from structlog output
+      # Falls back to ingestion time if field absent
+      # ---------------------------------------------------------------- #
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+          fallback_formats:
+            - RFC3339
+            - "2006-01-02T15:04:05.999999Z07:00"
+          action_on_failure: fudge
+
+      # ---------------------------------------------------------------- #
+      # Stage 5: Multiline — catch Python tracebacks
+      # A new log entry starts when a line begins with '{'  (JSON) or
+      # with a timestamp pattern (dev console format)
+      # ---------------------------------------------------------------- #
+      - multiline:
+          firstline: '(^\{|^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})'
+          max_wait_time: 3s
+          max_lines: 256
+
+      # ---------------------------------------------------------------- #
+      # Stage 6: Drop noisy health-check logs from the api container
+      # GET /health/live and GET /health/ready at INFO level are chatty
+      # ---------------------------------------------------------------- #
+      - match:
+          selector: '{service="api"}'
+          stages:
+            - json:
+                expressions:
+                  _event: event
+                  _level: level
+            - drop:
+                expression: '(_event =~ "health\.(live|ready|check)" and _level == "info")'
+
+  # ------------------------------------------------------------------ #
+  # Static file scrape for the Promtail host itself (self-monitoring)
+  # ------------------------------------------------------------------ #
+  - job_name: promtail-self
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: promtail
+          service: promtail
+          __path__: /var/log/promtail.log

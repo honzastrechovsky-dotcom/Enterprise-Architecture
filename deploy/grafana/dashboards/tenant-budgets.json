@@ -1,0 +1,331 @@
+{
+  "dashboard": {
+    "title": "Tenant Token Budgets",
+    "uid": "enterprise-agent-tenant-budgets",
+    "version": 1,
+    "timezone": "browser",
+    "editable": true,
+    "graphTooltip": 1,
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    },
+    "refresh": "1m",
+    "tags": ["tenant", "budget", "tokens"],
+    "templating": {
+      "list": [
+        {
+          "name": "tenant_id",
+          "type": "query",
+          "label": "Tenant",
+          "query": "label_values(token_budget_remaining, tenant_id)",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "allValue": ".*",
+          "includeAll": true,
+          "multi": true,
+          "refresh": 2
+        },
+        {
+          "name": "period",
+          "type": "custom",
+          "label": "Budget Period",
+          "query": "daily,monthly",
+          "current": {"text": "daily", "value": "daily"},
+          "options": [
+            {"text": "daily", "value": "daily", "selected": true},
+            {"text": "monthly", "value": "monthly", "selected": false}
+          ],
+          "includeAll": false,
+          "multi": false
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Budget Exhaustion Alert — Remaining Below 10%",
+        "type": "alertlist",
+        "gridPos": {"h": 4, "w": 24, "x": 0, "y": 0},
+        "options": {
+          "alertName": "TokenBudgetCritical",
+          "dashboardAlerts": false,
+          "maxItems": 20,
+          "sortOrder": 1,
+          "stateFilter": {
+            "alerting": true,
+            "critical": true,
+            "firing": true
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Token Budget Remaining by Tenant ($period)",
+        "type": "bargauge",
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 4},
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "targets": [
+          {
+            "expr": "token_budget_remaining{tenant_id=~\"$tenant_id\",period=\"$period\"}",
+            "legendFormat": "{{tenant_id}}",
+            "refId": "A",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "min": 0,
+            "thresholds": {
+              "mode": "percentage",
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 20},
+                {"color": "green", "value": 50}
+              ]
+            }
+          }
+        },
+        "options": {
+          "reduceOptions": {"calcs": ["lastNotNull"]},
+          "orientation": "horizontal",
+          "displayMode": "gradient",
+          "showUnfilled": true
+        }
+      },
+      {
+        "id": 3,
+        "title": "Token Budget Remaining Over Time ($period)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 14},
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "targets": [
+          {
+            "expr": "token_budget_remaining{tenant_id=~\"$tenant_id\",period=\"$period\"}",
+            "legendFormat": "{{tenant_id}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "min": 0,
+            "custom": {
+              "lineWidth": 2,
+              "fillOpacity": 10
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 10000},
+                {"color": "red", "value": 1000}
+              ]
+            }
+          }
+        },
+        "options": {
+          "tooltip": {"mode": "multi"},
+          "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "min"]}
+        }
+      },
+      {
+        "id": 4,
+        "title": "Token Budget Used (cumulative, $period)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22},
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "targets": [
+          {
+            "expr": "token_budget_used_total{tenant_id=~\"$tenant_id\",period=\"$period\"}",
+            "legendFormat": "{{tenant_id}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "min": 0,
+            "custom": {"lineWidth": 2, "fillOpacity": 10}
+          }
+        },
+        "options": {
+          "tooltip": {"mode": "multi"},
+          "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"]}
+        }
+      },
+      {
+        "id": 5,
+        "title": "Token Consumption Rate (tokens/s)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22},
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "targets": [
+          {
+            "expr": "sum by (tenant_id) (rate(token_budget_used_total{tenant_id=~\"$tenant_id\"}[5m]))",
+            "legendFormat": "{{tenant_id}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {"lineWidth": 2, "fillOpacity": 10}
+          }
+        },
+        "options": {
+          "tooltip": {"mode": "multi"},
+          "legend": {"displayMode": "table", "placement": "bottom"}
+        }
+      },
+      {
+        "id": 6,
+        "title": "Budget Utilization % (used / (used + remaining))",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 30},
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "targets": [
+          {
+            "expr": "100 * (token_budget_used_total{tenant_id=~\"$tenant_id\",period=\"$period\"} / (token_budget_used_total{tenant_id=~\"$tenant_id\",period=\"$period\"} + token_budget_remaining{tenant_id=~\"$tenant_id\",period=\"$period\"}))",
+            "legendFormat": "{{tenant_id}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 75},
+                {"color": "red", "value": 90}
+              ]
+            },
+            "custom": {"lineWidth": 2, "fillOpacity": 10}
+          }
+        },
+        "options": {
+          "tooltip": {"mode": "multi"},
+          "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"]}
+        }
+      },
+      {
+        "id": 7,
+        "title": "Tenants Near Budget Limit (> 90% used)",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 38},
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "targets": [
+          {
+            "expr": "100 * (token_budget_used_total{period=\"$period\"} / (token_budget_used_total{period=\"$period\"} + token_budget_remaining{period=\"$period\"})) > 90",
+            "legendFormat": "{{tenant_id}}",
+            "refId": "A",
+            "instant": true,
+            "format": "table"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "yellow", "value": null},
+                {"color": "red", "value": 95}
+              ]
+            }
+          }
+        },
+        "options": {
+          "sortBy": [{"desc": true, "displayName": "Value"}]
+        },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "renameByName": {
+                "tenant_id": "Tenant",
+                "Value": "Budget Used (%)"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Projected Hours Until Budget Exhaustion",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 38},
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "targets": [
+          {
+            "expr": "token_budget_remaining{tenant_id=~\"$tenant_id\",period=\"$period\"} / (sum by (tenant_id, period) (rate(token_budget_used_total{tenant_id=~\"$tenant_id\",period=\"$period\"}[1h])) * 3600)",
+            "legendFormat": "{{tenant_id}}",
+            "refId": "A",
+            "instant": true,
+            "format": "table"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "h",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 6},
+                {"color": "green", "value": 24}
+              ]
+            }
+          }
+        },
+        "options": {
+          "sortBy": [{"desc": false, "displayName": "Value"}]
+        },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "renameByName": {
+                "tenant_id": "Tenant",
+                "Value": "Hours Until Exhaustion"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Daily Token Spend by Tenant (last 7 d)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 46},
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "time": {"from": "now-7d", "to": "now"},
+        "targets": [
+          {
+            "expr": "sum by (tenant_id) (increase(token_budget_used_total{tenant_id=~\"$tenant_id\",period=\"daily\"}[1d]))",
+            "legendFormat": "{{tenant_id}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {
+              "lineWidth": 2,
+              "fillOpacity": 10,
+              "spanNulls": false
+            }
+          }
+        },
+        "options": {
+          "tooltip": {"mode": "multi"},
+          "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "sum"]}
+        }
+      }
+    ]
+  }
+}

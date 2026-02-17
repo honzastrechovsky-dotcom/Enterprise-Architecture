@@ -1,0 +1,249 @@
+version: "3.9"
+
+# ============================================================
+# Enterprise Agent Platform - Full-Stack Development Setup
+# ============================================================
+
+services:
+  # ----------------------------------------------------------
+  # FastAPI Application (Backend API)
+  # Built from local Dockerfile with dev environment
+  # ----------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    ports:
+      - "8000:8000"
+    environment:
+      # Application
+      - ENVIRONMENT=dev
+      - DEBUG=true
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-not-for-production}
+      - DEV_JWT_SECRET=${DEV_JWT_SECRET:-dev-only-jwt-secret-not-for-production}
+
+      # Database (matches config.py defaults)
+      - DATABASE_URL=postgresql+asyncpg://app:app_password@db:5432/enterprise_agents
+      - DB_ECHO_SQL=false
+
+      # Redis
+      - REDIS_URL=redis://redis:6379/0
+
+      # LiteLLM Proxy (for cloud LLMs via gateway)
+      - LITELLM_BASE_URL=http://litellm:4000
+      - LITELLM_API_KEY=${LITELLM_API_KEY:-sk-dev-key}
+      - LITELLM_DEFAULT_MODEL=openai/gpt-4o-mini
+      - LITELLM_EMBEDDING_MODEL=openai/text-embedding-3-small
+
+      # Model Routing & Token Economy
+      - MODEL_ROUTING_ENABLED=true
+      - MODEL_LIGHT=ollama/qwen2.5:7b
+      - MODEL_STANDARD=ollama/qwen2.5:32b
+      - MODEL_HEAVY=ollama/qwen2.5:72b
+      - TOKEN_BUDGET_DAILY=1000000
+      - TOKEN_BUDGET_MONTHLY=20000000
+
+      # OIDC / Auth
+      - OIDC_ISSUER_URL=http://localhost:8080/realms/dev
+      - OIDC_CLIENT_ID=enterprise-agents
+      - OIDC_AUDIENCE=enterprise-agents-api
+
+      # Rate Limiting
+      - RATE_LIMIT_PER_MINUTE=60
+
+      # RAG / Document Processing
+      - CHUNK_SIZE_TOKENS=512
+      - CHUNK_OVERLAP_TOKENS=50
+      - VECTOR_TOP_K=5
+      - EMBEDDING_DIMENSIONS=1536
+
+      # Observability
+      - ENABLE_TELEMETRY=false
+      - OTLP_ENDPOINT=http://localhost:4317
+
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+
+    volumes:
+      # Enable hot reload in development
+      - ./src:/app/src:ro
+      - uploads-dev:/app/uploads
+
+    networks:
+      - app-net
+
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # PostgreSQL 16 with pgvector Extension
+  # Vector database for RAG embeddings and relational data
+  # ----------------------------------------------------------
+  db:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=app_password
+      - POSTGRES_DB=enterprise_agents
+      # Performance tuning for development
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+
+    volumes:
+      - postgres-data-dev:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d enterprise_agents"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    networks:
+      - app-net
+
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Redis 7 Alpine
+  # Distributed rate limiting, caching, and session storage
+  # ----------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - redis-data-dev:/data
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+    # Enable persistence with AOF for durability
+    command: redis-server --appendonly yes --appendfsync everysec
+
+    networks:
+      - app-net
+
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Ollama (Local LLM Inference)
+  # GPU-accelerated model serving for cost-effective local inference
+  # ----------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+
+    volumes:
+      # Persistent model storage (models can be large: 10-100GB)
+      - ollama-models:/root/.ollama
+
+    # GPU passthrough for NVIDIA GPUs (requires nvidia-docker2)
+    # Comment out if not using GPU or on CPU-only machines
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    networks:
+      - app-net
+
+    restart: unless-stopped
+
+    # Optional: Pull models on startup (uncomment and customize)
+    # command: >
+    #   bash -c "
+    #   ollama serve &
+    #   sleep 5 &&
+    #   ollama pull qwen2.5:7b &&
+    #   ollama pull qwen2.5:32b &&
+    #   wait
+    #   "
+
+  # ----------------------------------------------------------
+  # LiteLLM Proxy (Model-Agnostic LLM Gateway)
+  # Unified API for OpenAI, Anthropic, Ollama, etc.
+  # ----------------------------------------------------------
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    ports:
+      - "4000:4000"
+    environment:
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-dev-key}
+      # Add your API keys for cloud providers (optional in dev)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml:ro
+
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+
+    networks:
+      - app-net
+
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Frontend (React/Vite Development Server)
+  # Hot-reload enabled for rapid UI development
+  # ----------------------------------------------------------
+  frontend:
+    image: node:20-alpine
+    working_dir: /app/frontend
+    ports:
+      - "5173:5173"
+
+    environment:
+      - NODE_ENV=development
+      - VITE_API_BASE_URL=http://localhost:8000
+
+    # Volume mount for hot reload
+    volumes:
+      - ./frontend:/app/frontend
+      - /app/frontend/node_modules  # Prevent overwriting node_modules
+
+    # Install dependencies and run dev server with host binding
+    command: sh -c "npm install && npm run dev -- --host"
+
+    networks:
+      - app-net
+
+    restart: unless-stopped
+
+# ============================================================
+# Named Volumes (Persistent Data)
+# ============================================================
+volumes:
+  postgres-data-dev:
+    driver: local
+  redis-data-dev:
+    driver: local
+  ollama-models:
+    driver: local
+  uploads-dev:
+    driver: local
+
+# ============================================================
+# Network Isolation
+# ============================================================
+networks:
+  app-net:
+    driver: bridge
+    # Optional: Enable IPv6
+    # enable_ipv6: true

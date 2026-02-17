@@ -1,0 +1,72 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  log_level: warn
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+# Query range configuration
+query_range:
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+# Ingestion limits
+limits_config:
+  # Retention: 30 days
+  retention_period: 720h
+  # Per-stream ingestion rate
+  ingestion_rate_mb: 16
+  ingestion_burst_size_mb: 32
+  # Max label name/value lengths
+  max_label_name_length: 1024
+  max_label_value_length: 2048
+  max_label_names_per_series: 30
+  # Query limits
+  max_query_series: 10000
+  max_query_lookback: 720h
+  max_entries_limit_per_query: 50000
+
+# Ruler (for alerting rules - future use)
+ruler:
+  alertmanager_url: http://localhost:9093
+
+# Compactor settings (handles retention enforcement)
+compactor:
+  working_directory: /loki/compactor
+  compaction_interval: 10m
+  retention_enabled: true
+  retention_delete_delay: 2h
+  retention_delete_worker_count: 150
+  delete_request_store: filesystem
+
+# Table manager (deprecated in newer Loki but kept for compatibility)
+# Retention is now handled by compactor above
+
+# Analytics (disable phone-home)
+analytics:
+  reporting_enabled: false

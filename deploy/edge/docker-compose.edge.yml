@@ -1,0 +1,139 @@
+# ============================================================
+# Enterprise Agent Platform - Edge Compose Stack
+# Minimal stack for factory floor edge devices
+# - No PostgreSQL (SQLite)
+# - No Redis (in-memory cache)
+# - Ollama with 7B model only
+# ============================================================
+
+version: "3.9"
+
+services:
+  # ------------------------------------------------------------------ #
+  # API service (lightweight edge mode)
+  # ------------------------------------------------------------------ #
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/edge/Dockerfile.edge
+    image: enterprise-agent-platform:edge
+    container_name: eap-edge-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      EDGE_MODE: "true"
+      EDGE_CONFIG: /app/config/edge-config.yaml
+      DATABASE_URL: "sqlite+aiosqlite:////data/edge.db"
+      CACHE_BACKEND: "memory"
+      LITELLM_BASE_URL: "http://ollama:11434"
+      LITELLM_API_KEY: "edge-local-key"
+      MODEL_TIER: "light_only"
+      SYNC_ENDPOINT: "${SYNC_ENDPOINT:-https://central.example.com/api/v1/sync}"
+      SYNC_API_KEY: "${SYNC_API_KEY:-}"
+      SYNC_ENABLED: "${SYNC_ENABLED:-true}"
+      SYNC_INTERVAL_SECONDS: "300"
+      OFFLINE_MODE: "${OFFLINE_MODE:-true}"
+      MAX_MEMORY_MB: "4096"
+      LOG_LEVEL: "info"
+      SECRET_KEY: "${SECRET_KEY:-edge-dev-secret-change-in-production}"
+    volumes:
+      - edge-data:/data
+      - edge-logs:/var/log/eap
+    depends_on:
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2.0"
+        reservations:
+          memory: 512M
+          cpus: "0.5"
+
+  # ------------------------------------------------------------------ #
+  # Ollama - 7B model only for edge
+  # ------------------------------------------------------------------ #
+  ollama:
+    image: ollama/ollama:latest
+    container_name: eap-edge-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    environment:
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_QUEUE: "4"
+    volumes:
+      - ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: "4.0"
+        reservations:
+          memory: 4G
+          cpus: "2.0"
+
+  # ------------------------------------------------------------------ #
+  # Sync agent - periodic background sync to central
+  # ------------------------------------------------------------------ #
+  sync-agent:
+    image: enterprise-agent-platform:edge
+    container_name: eap-edge-sync
+    restart: unless-stopped
+    command:
+      - python
+      - -m
+      - src.edge.sync_daemon
+    environment:
+      EDGE_CONFIG: /app/config/edge-config.yaml
+      DATABASE_URL: "sqlite+aiosqlite:////data/edge.db"
+      SYNC_ENDPOINT: "${SYNC_ENDPOINT:-https://central.example.com/api/v1/sync}"
+      SYNC_API_KEY: "${SYNC_API_KEY:-}"
+      SYNC_INTERVAL_SECONDS: "300"
+      LOG_LEVEL: "info"
+    volumes:
+      - edge-data:/data
+    depends_on:
+      - api
+
+# ------------------------------------------------------------------ #
+# Volumes
+# ------------------------------------------------------------------ #
+volumes:
+  edge-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: "${DATA_PATH:-./data}"
+  edge-logs:
+    driver: local
+  ollama-models:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: "${MODELS_PATH:-./models}"
+
+# ------------------------------------------------------------------ #
+# Networks
+# ------------------------------------------------------------------ #
+networks:
+  default:
+    name: eap-edge-network
+    driver: bridge

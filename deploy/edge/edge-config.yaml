@@ -1,0 +1,83 @@
+# ============================================================
+# Enterprise Agent Platform - Edge Configuration
+# Used by edge deployments on factory floor / IoT devices
+# ============================================================
+
+# Edge identity
+edge:
+  node_id: "${EDGE_NODE_ID:-edge-node-001}"
+  site_id: "${EDGE_SITE_ID:-site-001}"
+  description: "Factory floor edge node"
+
+# Model tier: only lightweight 7B-class models allowed on edge
+model_tier: "light_only"
+allowed_models:
+  - "ollama/llama3:7b"
+  - "ollama/mistral:7b"
+  - "ollama/qwen2:7b"
+  - "ollama/phi3:mini"
+max_model_size_gb: 8
+
+# Cache backend: in-memory only (no Redis on edge)
+cache_backend: "memory"
+cache_max_size_mb: 512
+cache_ttl_seconds: 3600
+
+# Database: SQLite for local persistence
+database_backend: "sqlite"
+database_path: "/data/edge.db"
+database_pool_size: 5
+
+# Sync configuration
+sync_enabled: true
+sync_interval_seconds: 300
+sync_endpoint: "https://central.example.com/api/v1/sync"
+sync_api_key: "${SYNC_API_KEY:-}"
+sync_batch_size: 100
+sync_retry_max: 5
+sync_retry_backoff_seconds: 60
+
+# Conflict resolution: central always wins
+conflict_resolution: "central_wins"
+
+# Offline mode: queue operations when no connectivity
+offline_mode: true
+offline_queue_max_items: 10000
+offline_queue_path: "/data/sync_queue.db"
+
+# Resource limits for edge hardware
+max_memory_mb: 4096
+max_cpu_percent: 80
+max_disk_gb: 50
+low_memory_threshold_mb: 512
+low_disk_threshold_gb: 5
+
+# Feature flags: disabled on edge
+features:
+  multimodal: false
+  vector_search: false
+  fine_tuning: false
+  compliance_reports: false
+  analytics_dashboard: false
+  plugin_marketplace: false
+  # Enabled on edge
+  chat: true
+  rag_basic: true
+  audit_logging: true
+  sync: true
+
+# API server
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 1
+  timeout_seconds: 30
+  max_request_size_mb: 10
+
+# Logging
+logging:
+  level: "info"
+  format: "json"
+  output: "/var/log/eap/edge.log"
+  max_size_mb: 100
+  rotate_count: 5

@@ -1,0 +1,255 @@
+---
+# docker-compose file for running load tests against the Enterprise Agent Platform.
+#
+# Services:
+#   app          — the FastAPI application under test (built from project root)
+#   postgres     — PostgreSQL 16 + pgvector (matches production docker-compose.yml)
+#   redis        — Redis 7 (rate limiter + caching)
+#   locust       — Locust master + one worker node
+#   k6           — k6 runner (exits after the test completes)
+#   grafana      — Optional: live dashboard for k6 results via InfluxDB
+#   influxdb     — Optional: k6 output backend for Grafana
+#
+# Usage:
+#   # Start only the platform stack (no load test yet):
+#   docker compose -f tests/load/docker-compose.load.yml up -d app postgres redis
+#
+#   # Run k6 once against the running stack:
+#   docker compose -f tests/load/docker-compose.load.yml run --rm k6
+#
+#   # Run Locust in headless mode for 5 minutes, 50 users:
+#   docker compose -f tests/load/docker-compose.load.yml run --rm \
+#     locust-worker locust \
+#       -f /tests/load/locustfile.py \
+#       --headless --users 50 --spawn-rate 5 --run-time 5m \
+#       --host http://app:8000
+#
+#   # Start Locust web UI (port 8089 on the host):
+#   docker compose -f tests/load/docker-compose.load.yml up locust-master locust-worker
+#   # Then open http://localhost:8089
+#
+#   # Start the full observability stack (Grafana + InfluxDB) with k6:
+#   docker compose -f tests/load/docker-compose.load.yml \
+#     --profile observability up -d
+#   docker compose -f tests/load/docker-compose.load.yml run --rm k6-influx
+
+version: "3.9"
+
+# ---------------------------------------------------------------------------
+# Shared environment
+# ---------------------------------------------------------------------------
+
+x-app-env: &app-env
+  ENVIRONMENT: dev
+  DATABASE_URL: postgresql+asyncpg://app:app_password@postgres:5432/enterprise_agents
+  REDIS_URL: redis://redis:6379/0
+  DEV_JWT_SECRET: dev-only-jwt-secret-not-for-production
+  SECRET_KEY: dev-secret-key-not-for-production
+  LITELLM_BASE_URL: http://litellm-mock:4000
+  LITELLM_API_KEY: sk-dev-key
+  OTLP_ENDPOINT: http://localhost:4317
+  DEBUG: "false"
+
+x-load-env: &load-env
+  TARGET_HOST: http://app:8000
+  DEV_JWT_SECRET: dev-only-jwt-secret-not-for-production
+  LOAD_TEST_TENANT_ID: "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+
+# ---------------------------------------------------------------------------
+# Volumes
+# ---------------------------------------------------------------------------
+
+volumes:
+  postgres_data_load: {}
+  influxdb_data: {}
+  grafana_data: {}
+
+# ---------------------------------------------------------------------------
+# Networks
+# ---------------------------------------------------------------------------
+
+networks:
+  load_net:
+    driver: bridge
+
+# ---------------------------------------------------------------------------
+# Services
+# ---------------------------------------------------------------------------
+
+services:
+
+  # -------------------------------------------------------------------------
+  # Infrastructure
+  # -------------------------------------------------------------------------
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app_password
+      POSTGRES_DB: enterprise_agents
+    volumes:
+      - postgres_data_load:/var/lib/postgresql/data
+    networks:
+      - load_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d enterprise_agents"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    networks:
+      - load_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # -------------------------------------------------------------------------
+  # Application under test
+  # -------------------------------------------------------------------------
+
+  app:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    environment:
+      <<: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - load_net
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # -------------------------------------------------------------------------
+  # Locust
+  # -------------------------------------------------------------------------
+
+  locust-master:
+    image: locustio/locust:latest
+    command: >
+      locust
+        -f /tests/load/locustfile.py
+        --master
+        --host http://app:8000
+        --web-port 8089
+    volumes:
+      - ../../tests:/tests:ro
+    environment:
+      <<: *load-env
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - load_net
+    ports:
+      - "8089:8089"  # Locust web UI
+
+  locust-worker:
+    image: locustio/locust:latest
+    command: >
+      locust
+        -f /tests/load/locustfile.py
+        --worker
+        --master-host locust-master
+    volumes:
+      - ../../tests:/tests:ro
+    environment:
+      <<: *load-env
+    depends_on:
+      - locust-master
+    networks:
+      - load_net
+    deploy:
+      replicas: 2  # Run 2 worker nodes by default
+
+  # -------------------------------------------------------------------------
+  # k6
+  # -------------------------------------------------------------------------
+
+  k6:
+    image: grafana/k6:latest
+    command: >
+      run
+        /scripts/k6_script.js
+        --vus 50
+        --duration 5m30s
+        --summary-trend-stats p(50),p(95),p(99),max
+        --out json=/results/k6_results.json
+    volumes:
+      - .:/scripts:ro
+      - ./results:/results
+    environment:
+      <<: *load-env
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - load_net
+
+  # -------------------------------------------------------------------------
+  # k6 with InfluxDB output (--profile observability)
+  # -------------------------------------------------------------------------
+
+  influxdb:
+    image: influxdb:1.8-alpine
+    profiles: [observability]
+    environment:
+      INFLUXDB_DB: k6
+      INFLUXDB_HTTP_AUTH_ENABLED: "false"
+    volumes:
+      - influxdb_data:/var/lib/influxdb
+    networks:
+      - load_net
+    ports:
+      - "8086:8086"
+
+  grafana:
+    image: grafana/grafana:latest
+    profiles: [observability]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - influxdb
+    networks:
+      - load_net
+    ports:
+      - "3001:3000"  # Grafana UI (port 3001 to avoid clash with dev frontend)
+
+  k6-influx:
+    image: grafana/k6:latest
+    profiles: [observability]
+    command: >
+      run
+        /scripts/k6_script.js
+        --out influxdb=http://influxdb:8086/k6
+        --summary-trend-stats p(50),p(95),p(99),max
+    volumes:
+      - .:/scripts:ro
+    environment:
+      <<: *load-env
+    depends_on:
+      app:
+        condition: service_healthy
+      influxdb:
+        condition: service_started
+    networks:
+      - load_net

@@ -1,0 +1,207 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "enterprise-agent-platform.fullname" . }}-api
+  labels:
+    {{- include "enterprise-agent-platform.api.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.api.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "enterprise-agent-platform.api.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      labels:
+        {{- include "enterprise-agent-platform.api.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "enterprise-agent-platform.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: api
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+          {{- toYaml .Values.api.securityContext | nindent 10 }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.api.port }}
+          protocol: TCP
+        env:
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: environment
+        - name: DEBUG
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: debug
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: database-url
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: redis-url
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: secret-key
+        {{- if eq .Values.config.environment "dev" }}
+        - name: DEV_JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: dev-jwt-secret
+        {{- end }}
+        - name: LITELLM_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: litellm-base-url
+        - name: LITELLM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: litellm-api-key
+        - name: LITELLM_DEFAULT_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: litellm-default-model
+        - name: LITELLM_EMBEDDING_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: litellm-embedding-model
+        - name: MODEL_ROUTING_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: model-routing-enabled
+        - name: MODEL_LIGHT
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: model-light
+        - name: MODEL_STANDARD
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: model-standard
+        - name: MODEL_HEAVY
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: model-heavy
+        - name: TOKEN_BUDGET_DAILY
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: token-budget-daily
+        - name: TOKEN_BUDGET_MONTHLY
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: token-budget-monthly
+        - name: OIDC_ISSUER_URL
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: oidc-issuer-url
+        - name: OIDC_CLIENT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: oidc-client-id
+        - name: OIDC_AUDIENCE
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: oidc-audience
+        - name: RATE_LIMIT_PER_MINUTE
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: rate-limit-per-minute
+        - name: CHUNK_SIZE_TOKENS
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: chunk-size-tokens
+        - name: CHUNK_OVERLAP_TOKENS
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: chunk-overlap-tokens
+        - name: VECTOR_TOP_K
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: vector-top-k
+        - name: EMBEDDING_DIMENSIONS
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: embedding-dimensions
+        - name: BACKGROUND_WORKER_CONCURRENCY
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: background-worker-concurrency
+        - name: ENABLE_TELEMETRY
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: enable-telemetry
+        - name: OTLP_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "enterprise-agent-platform.fullname" . }}
+              key: otlp-endpoint
+        livenessProbe:
+          {{- toYaml .Values.api.livenessProbe | nindent 10 }}
+        readinessProbe:
+          {{- toYaml .Values.api.readinessProbe | nindent 10 }}
+        resources:
+          {{- toYaml .Values.api.resources | nindent 10 }}
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: uploads
+          mountPath: /app/uploads
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: uploads
+        emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

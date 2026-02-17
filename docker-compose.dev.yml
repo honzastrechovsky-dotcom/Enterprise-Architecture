@@ -1,0 +1,196 @@
+version: "3.9"
+
+# ============================================================
+# Enterprise Agent Platform - Local Development Stack
+# Full-stack: API (hot reload) + DB + Redis + Frontend + Mock LLM
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up -d
+#   OR use the helper script: ./scripts/dev-start.sh
+#
+# Services:
+#   api       -> http://localhost:8000  (FastAPI, hot reload)
+#   db        -> localhost:5432         (PostgreSQL 16 + pgvector)
+#   redis     -> localhost:6379         (Redis 7)
+#   frontend  -> http://localhost:5173  (Vite dev server)
+#   litellm   -> http://localhost:4000  (LiteLLM proxy, optional)
+# ============================================================
+
+name: enterprise-agents-dev
+
+services:
+
+  # ----------------------------------------------------------
+  # FastAPI Application (Backend API)
+  # Built from local Dockerfile with hot-reload volume mount
+  # ----------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.dev
+    environment:
+      # Override specific vars for docker-compose networking
+      - DATABASE_URL=postgresql+asyncpg://app:app_password@db:5432/enterprise_agents
+      - REDIS_URL=redis://redis:6379/0
+      - LITELLM_BASE_URL=http://litellm:4000
+    # Hot reload: mount src + alembic as writable volumes
+    volumes:
+      - ./src:/app/src
+      - ./alembic:/app/alembic
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - uploads-dev:/app/uploads
+    command:
+      - uvicorn
+      - src.main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+      - --reload
+      - --reload-dir
+      - /app/src
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import httpx; httpx.get('http://localhost:8000/health', timeout=2.0)\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - enterprise-agents-network
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # PostgreSQL 16 with pgvector Extension
+  # Init script ensures the vector extension is enabled
+  # ----------------------------------------------------------
+  db:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=app_password
+      - POSTGRES_DB=enterprise_agents
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres-data-dev:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init-extensions.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d enterprise_agents"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - enterprise-agents-network
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Redis 7 Alpine
+  # Distributed rate limiting, caching, and session storage
+  # ----------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data-dev:/data
+    command: redis-server --appendonly yes --appendfsync everysec
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - enterprise-agents-network
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Frontend (React/Vite Development Server)
+  # Hot-reload enabled via volume mount
+  # ----------------------------------------------------------
+  frontend:
+    image: node:20-alpine
+    working_dir: /app/frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_BASE_URL=http://localhost:8000
+      - VITE_WS_BASE_URL=ws://localhost:8000
+    volumes:
+      - ./frontend:/app/frontend
+      # Prevent overwriting container's node_modules with host's (or absence thereof)
+      - frontend-node-modules:/app/frontend/node_modules
+    command: >
+      sh -c "
+        if [ ! -d node_modules ]; then npm install; fi &&
+        npm run dev -- --host 0.0.0.0 --port 5173
+      "
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:5173 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - enterprise-agents-network
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # LiteLLM Proxy (Model-Agnostic LLM Gateway)
+  # Optional: set USE_MOCK_LLM=true in .env.dev to use mock instead
+  # Unified API for OpenAI, Anthropic, Ollama, etc.
+  # ----------------------------------------------------------
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    ports:
+      - "4000:4000"
+    environment:
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-dev-key}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-placeholder}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ./litellm_config.dev.yaml:/app/config.yaml:ro
+    command: ["--config", "/app/config.yaml", "--port", "4000", "--detailed_debug"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:4000/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - enterprise-agents-network
+    restart: unless-stopped
+
+# ============================================================
+# Named Volumes (Persistent Data)
+# ============================================================
+volumes:
+  postgres-data-dev:
+    driver: local
+  redis-data-dev:
+    driver: local
+  uploads-dev:
+    driver: local
+  frontend-node-modules:
+    driver: local
+
+# ============================================================
+# Isolated network for this stack
+# ============================================================
+networks:
+  enterprise-agents-network:
+    driver: bridge
+    name: enterprise-agents-network

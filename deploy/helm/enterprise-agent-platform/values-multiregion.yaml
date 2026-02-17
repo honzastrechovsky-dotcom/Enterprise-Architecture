@@ -1,0 +1,215 @@
+# ============================================================
+# Enterprise Agent Platform - Multi-Region Helm Values Overlay
+# Apply on top of values.yaml: helm upgrade --values values-multiregion.yaml
+# ============================================================
+
+# ------------------------------------------------------------------ #
+# Region identity
+# ------------------------------------------------------------------ #
+region:
+  name: "${REGION_NAME:-us-east-1}"
+  zone: "${REGION_ZONE:-us-east-1a}"
+  isPrimary: true
+  # Endpoint advertised to other regions for cross-region API calls
+  externalEndpoint: "https://us-east-1.enterprise-agents.example.com"
+  # Display label for dashboards
+  displayName: "US East (N. Virginia)"
+
+# ------------------------------------------------------------------ #
+# Database replication
+# ------------------------------------------------------------------ #
+database:
+  # Primary region where writes are accepted
+  primaryRegion: "us-east-1"
+
+  # Read replicas in secondary regions
+  readReplicas:
+    enabled: true
+    regions:
+      - name: "eu-west-1"
+        host: "eu-west-1-db.internal.example.com"
+        port: 5432
+        database: "enterprise_agents"
+        # Credentials resolved from the same secret as primary
+        secretRef: "db-credentials-eu-west-1"
+      - name: "ap-southeast-1"
+        host: "ap-southeast-1-db.internal.example.com"
+        port: 5432
+        database: "enterprise_agents"
+        secretRef: "db-credentials-ap-southeast-1"
+
+  # Route read queries to replicas in the same region when possible
+  preferLocalReplica: true
+
+  # Replication lag threshold before routing reads back to primary (seconds)
+  maxReplicationLagSeconds: 30
+
+  # Streaming replication slot name prefix
+  replicationSlotPrefix: "eap_replica"
+
+# ------------------------------------------------------------------ #
+# Multi-region routing configuration
+# ------------------------------------------------------------------ #
+multiregion:
+  enabled: true
+
+  # All configured regions (used by RegionRouter)
+  regions:
+    - name: "us-east-1"
+      endpoint: "https://us-east-1.enterprise-agents.example.com"
+      isPrimary: true
+      allowedTenants: []  # empty = all tenants allowed
+      excludedTenants: []
+      status: "healthy"
+
+    - name: "eu-west-1"
+      endpoint: "https://eu-west-1.enterprise-agents.example.com"
+      isPrimary: false
+      # EU data residency: only EU-domiciled tenants
+      allowedTenants: []
+      excludedTenants: []
+      # Tag for GDPR compliance routing
+      dataResidencyZone: "EU"
+      status: "healthy"
+
+    - name: "ap-southeast-1"
+      endpoint: "https://ap-southeast-1.enterprise-agents.example.com"
+      isPrimary: false
+      allowedTenants: []
+      excludedTenants: []
+      dataResidencyZone: "APAC"
+      status: "healthy"
+
+  # Routing strategy: "latency" | "residency_first" | "primary_only"
+  routingStrategy: "residency_first"
+
+  # Latency measurement interval (seconds)
+  latencyProbeIntervalSeconds: 60
+
+  # Cross-region API key (used for management API calls between regions)
+  crossRegionApiKeySecret: "cross-region-api-key"
+
+# ------------------------------------------------------------------ #
+# Data residency rules
+# ------------------------------------------------------------------ #
+dataResidency:
+  # Default region for tenants with no explicit pin
+  defaultRegion: "us-east-1"
+
+  # Enforce residency rules: deny requests if tenant's region is unavailable
+  enforceStrictResidency: false
+
+  # Residency zones and their allowed regions
+  zones:
+    EU:
+      allowedRegions: ["eu-west-1"]
+      description: "GDPR-compliant EU data residency"
+    APAC:
+      allowedRegions: ["ap-southeast-1"]
+      description: "APAC data sovereignty requirements"
+    US:
+      allowedRegions: ["us-east-1"]
+      description: "US data residency"
+
+# ------------------------------------------------------------------ #
+# Cross-region failover
+# ------------------------------------------------------------------ #
+failover:
+  # Enable automatic failover on health check failures
+  autoFailover: true
+
+  # Number of consecutive failed health probes before triggering failover
+  failureThreshold: 3
+
+  # Interval between health probes (seconds)
+  probeIntervalSeconds: 10
+
+  # Timeout per health probe (seconds)
+  probeTimeoutSeconds: 5
+
+  # Preferred failover targets per region
+  preferredTargets:
+    us-east-1: "eu-west-1"
+    eu-west-1: "us-east-1"
+    ap-southeast-1: "us-east-1"
+
+  # Minimum time between automatic failovers (minutes) - prevents flapping
+  cooldownMinutes: 30
+
+  # Notify via webhook on failover events
+  webhookSecret: "failover-webhook-secret"
+  webhookUrlSecret: "failover-webhook-url"
+
+# ------------------------------------------------------------------ #
+# API replica counts per region
+# ------------------------------------------------------------------ #
+api:
+  # Primary region runs more replicas
+  replicaCount: 3
+
+  # Secondary regions can run fewer
+  secondaryReplicaCount: 2
+
+  # Pod affinity: prefer scheduling in region-labeled nodes
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                  - "${REGION_NAME:-us-east-1}"
+
+# ------------------------------------------------------------------ #
+# Ingress with latency-based routing annotations
+# ------------------------------------------------------------------ #
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    # AWS Route53 / GCP Traffic Director / Cloudflare annotations
+    # Uncomment for your provider:
+    # service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    # cloud.google.com/neg: '{"ingress": true}'
+
+    # Health check path for global load balancer
+    nginx.ingress.kubernetes.io/healthcheck-path: "/health/live"
+
+    # Cross-origin for cross-region API calls
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://*.enterprise-agents.example.com"
+
+  hosts:
+    - host: "${REGION_NAME:-us-east-1}.enterprise-agents.example.com"
+      paths:
+        - path: /
+          pathType: Prefix
+
+  tls:
+    - secretName: tls-multiregion-cert
+      hosts:
+        - "${REGION_NAME:-us-east-1}.enterprise-agents.example.com"
+
+# ------------------------------------------------------------------ #
+# Additional environment variables for multi-region mode
+# ------------------------------------------------------------------ #
+extraEnv:
+  - name: REGION_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.labels['topology.kubernetes.io/region']
+  - name: MULTIREGION_ENABLED
+    value: "true"
+  - name: ROUTING_STRATEGY
+    value: "residency_first"
+  - name: CROSS_REGION_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: cross-region-api-key
+        key: token
+  - name: AUTO_FAILOVER_ENABLED
+    value: "true"
+  - name: FAILURE_THRESHOLD
+    value: "3"

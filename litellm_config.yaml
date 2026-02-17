@@ -1,0 +1,40 @@
+# LiteLLM Proxy Configuration - Production
+# See: https://docs.litellm.ai/docs/proxy/configs
+
+model_list:
+  # OpenAI GPT-4o mini (default)
+  - model_name: openai/gpt-4o-mini
+    litellm_params:
+      model: gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+
+  # OpenAI GPT-4o
+  - model_name: openai/gpt-4o
+    litellm_params:
+      model: gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+
+  # Claude via Anthropic
+  - model_name: anthropic/claude-3-5-sonnet
+    litellm_params:
+      model: claude-3-5-sonnet-20241022
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  # Embeddings
+  - model_name: openai/text-embedding-3-small
+    litellm_params:
+      model: text-embedding-3-small
+      api_key: os.environ/OPENAI_API_KEY
+
+litellm_settings:
+  # Drop unsupported params instead of erroring
+  drop_params: true
+  # Request timeout in seconds
+  request_timeout: 600
+  # Retry configuration
+  num_retries: 3
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  # Enable usage tracking
+  store_model_in_db: false

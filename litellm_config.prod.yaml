@@ -1,0 +1,76 @@
+# LiteLLM Proxy Configuration - On-Premise Production
+# See: https://docs.litellm.ai/docs/proxy/configs
+#
+# IMPORTANT: This configuration is for air-gapped / on-premise deployments ONLY.
+# It uses exclusively local vLLM and Ollama endpoints.
+# There are NO cloud API fallbacks. If a model endpoint is unreachable, the
+# request will fail with an error — this is intentional for data sovereignty.
+#
+# Infrastructure expectations:
+#   vLLM  — serving Qwen 2.5 models via OpenAI-compatible API at http://vllm:8000/v1
+#   Ollama — serving embedding model at http://ollama:11434
+#
+# Model tiers:
+#   LIGHT    → qwen2.5:7b   (intent classification, PII detection, simple lookups)
+#   STANDARD → qwen2.5:32b  (most agent tasks, RAG responses, summaries)
+#   HEAVY    → qwen2.5:72b  (complex multi-step reasoning, security reviews)
+
+model_list:
+  # ------------------------------------------------------------------
+  # LIGHT tier — qwen2.5:7b via vLLM
+  # Used for: intent classification, PII redaction, simple chat
+  # ------------------------------------------------------------------
+  - model_name: openai/qwen2.5:7b
+    litellm_params:
+      model: openai/qwen2.5:7b
+      api_base: http://vllm:8000/v1
+      api_key: os.environ/LITELLM_MASTER_KEY
+      # No cloud fallback — fail hard on error
+
+  # ------------------------------------------------------------------
+  # STANDARD tier — qwen2.5:32b via vLLM
+  # Used for: most agent tasks, RAG-grounded answers, tool orchestration
+  # ------------------------------------------------------------------
+  - model_name: openai/qwen2.5:32b
+    litellm_params:
+      model: openai/qwen2.5:32b
+      api_base: http://vllm:8000/v1
+      api_key: os.environ/LITELLM_MASTER_KEY
+      # No cloud fallback — fail hard on error
+
+  # ------------------------------------------------------------------
+  # HEAVY tier — qwen2.5:72b via vLLM
+  # Used for: complex reasoning, security analysis, extended thinking
+  # ------------------------------------------------------------------
+  - model_name: openai/qwen2.5:72b
+    litellm_params:
+      model: openai/qwen2.5:72b
+      api_base: http://vllm:8000/v1
+      api_key: os.environ/LITELLM_MASTER_KEY
+      # No cloud fallback — fail hard on error
+
+  # ------------------------------------------------------------------
+  # Embeddings — nomic-embed-text via Ollama
+  # Used for: document chunking, RAG vector search
+  # ------------------------------------------------------------------
+  - model_name: ollama/nomic-embed-text
+    litellm_params:
+      model: ollama/nomic-embed-text
+      api_base: http://ollama:11434
+      # No API key required for Ollama
+      # No cloud fallback — fail hard on error
+
+litellm_settings:
+  # Drop unsupported params instead of erroring (vLLM compatibility)
+  drop_params: true
+  # Generous timeout for large model inference (72B can be slow)
+  request_timeout: 600
+  # Single retry only — avoids amplifying load on constrained GPU hardware
+  num_retries: 1
+  # Do NOT configure fallback_models here — there are no cloud fallbacks
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  # Disable telemetry to external services (air-gapped environment)
+  telemetry: false
+  store_model_in_db: false

@@ -1,0 +1,68 @@
+global:
+  scrape_interval: 15s       # How often to scrape targets
+  evaluation_interval: 15s   # How often to evaluate rules
+  scrape_timeout: 10s
+  external_labels:
+    environment: production
+    platform: enterprise-agent-platform
+
+# Alerting (optional — wire up Alertmanager here when ready)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ["alertmanager:9093"]
+
+# Rule files — add alert/recording rules here later
+rule_files: []
+  # - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  # ---------------------------------------------------------------------------
+  # Prometheus self-monitoring
+  # ---------------------------------------------------------------------------
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+    metrics_path: /metrics
+
+  # ---------------------------------------------------------------------------
+  # FastAPI application — /metrics endpoint (Prometheus client library)
+  # ---------------------------------------------------------------------------
+  - job_name: enterprise-agent-platform
+    scrape_interval: 15s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:8000"]
+        labels:
+          service: api
+          component: fastapi
+    # Uncomment if the /metrics endpoint requires bearer token auth:
+    # authorization:
+    #   credentials_file: /etc/prometheus/metrics_token
+
+  # ---------------------------------------------------------------------------
+  # If running multiple API replicas behind a load balancer, add them here
+  # or use a DNS-based service discovery block:
+  # ---------------------------------------------------------------------------
+  # - job_name: enterprise-agent-platform-replicas
+  #   dns_sd_configs:
+  #     - names: ["api"]
+  #       type: A
+  #       port: 8000
+  #   metrics_path: /metrics
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL exporter (optional — add when postgres_exporter is deployed)
+  # ---------------------------------------------------------------------------
+  # - job_name: postgres
+  #   static_configs:
+  #     - targets: ["postgres-exporter:9187"]
+  #   metrics_path: /metrics
+
+  # ---------------------------------------------------------------------------
+  # Redis exporter (optional)
+  # ---------------------------------------------------------------------------
+  # - job_name: redis
+  #   static_configs:
+  #     - targets: ["redis-exporter:9121"]
+  #   metrics_path: /metrics

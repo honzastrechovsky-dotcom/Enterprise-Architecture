@@ -1,0 +1,104 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "enterprise-agent-platform"
+version = "0.1.0"
+description = "Multi-tenant enterprise agent platform with RAG, audit logging, and OIDC auth"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+authors = [{ name = "Jan Střechovský", email = "" }]
+
+dependencies = [
+    # Web framework
+    "fastapi>=0.115.0,<1.0.0",
+    "uvicorn[standard]>=0.32.0,<1.0.0",
+
+    # Database
+    "sqlalchemy[asyncio]>=2.0.36,<3.0.0",
+    "asyncpg>=0.30.0,<1.0.0",
+    "pgvector>=0.3.6,<1.0.0",
+    "alembic>=1.14.0,<2.0.0",
+
+    # Settings / Validation
+    "pydantic>=2.10.0,<3.0.0",
+    "pydantic-settings>=2.6.0,<3.0.0",
+
+    # Auth / JWT
+    "PyJWT[crypto]>=2.10.0,<3.0.0",
+    "httpx>=0.28.0,<1.0.0",
+
+    # LLM
+    "litellm>=1.55.0,<2.0.0",
+
+    # RAG / Document processing
+    "llama-index-core>=0.12.0,<1.0.0",
+    "llama-index-embeddings-litellm>=0.3.0,<1.0.0",
+    "pypdf>=5.1.0,<6.0.0",
+    "tiktoken>=0.8.0,<1.0.0",
+
+    # Utilities
+    "python-multipart>=0.0.18,<1.0.0",
+    "structlog>=24.4.0,<25.0.0",
+    "tenacity>=9.0.0,<10.0.0",
+    "cachetools>=5.5.0,<6.0.0",
+    "aiosmtplib>=2.0.0,<3.0.0",
+    "pyotp>=2.9.0,<3.0.0",
+
+    # Observability
+    "prometheus-client>=0.21.0,<1.0.0",
+    "opentelemetry-api>=1.28.0,<2.0.0",
+    "opentelemetry-sdk>=1.28.0,<2.0.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.28.0,<2.0.0",
+    "opentelemetry-instrumentation-fastapi>=0.49b0,<1.0.0",
+    "opentelemetry-instrumentation-httpx>=0.49b0,<1.0.0",
+    "opentelemetry-instrumentation-sqlalchemy>=0.49b0,<1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "httpx>=0.28.0",
+    "factory-boy>=3.3.1",
+    "faker>=33.0.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "types-PyJWT>=1.7.1",
+    "types-cachetools>=5.5.0",
+    "bandit[toml]>=1.7.0",
+    "pip-audit>=2.7.0",
+    # Integration test container support (optional — used when Docker is available)
+    "testcontainers[postgres]>=4.0.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--strict-markers -v"
+markers = [
+    "integration: mark test as integration test (requires DB)",
+    "slow: mark test as slow",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "ANN"]
+ignore = ["ANN101", "ANN102", "ANN401"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true

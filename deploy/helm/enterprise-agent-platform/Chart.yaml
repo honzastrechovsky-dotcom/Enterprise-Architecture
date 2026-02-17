@@ -1,0 +1,26 @@
+apiVersion: v2
+name: enterprise-agent-platform
+description: Multi-tenant AI agent platform for enterprise clients with RAG, audit logging, and OIDC authentication
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - ai
+  - agents
+  - rag
+  - enterprise
+  - multi-tenant
+maintainers:
+  - name: Platform Team
+    email: platform@example.com
+sources:
+  - https://github.com/enterprise-agent-platform/enterprise-agent-platform
+dependencies:
+  - name: postgresql
+    version: "~13.0.0"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: "~18.0.0"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled

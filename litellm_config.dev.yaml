@@ -1,0 +1,34 @@
+# LiteLLM Proxy Configuration - Development (uses local Ollama)
+# See: https://docs.litellm.ai/docs/proxy/configs
+
+model_list:
+  # Ollama llama3.2 (local, no API key required)
+  - model_name: ollama/llama3.2
+    litellm_params:
+      model: ollama/llama3.2
+      api_base: http://ollama:11434
+
+  # Ollama embeddings
+  - model_name: ollama/nomic-embed-text
+    litellm_params:
+      model: ollama/nomic-embed-text
+      api_base: http://ollama:11434
+
+  # Fallback to OpenAI if OPENAI_API_KEY is set
+  - model_name: openai/gpt-4o-mini
+    litellm_params:
+      model: gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+
+  - model_name: openai/text-embedding-3-small
+    litellm_params:
+      model: text-embedding-3-small
+      api_key: os.environ/OPENAI_API_KEY
+
+litellm_settings:
+  drop_params: true
+  request_timeout: 120
+  num_retries: 1
+
+general_settings:
+  master_key: sk-dev-key

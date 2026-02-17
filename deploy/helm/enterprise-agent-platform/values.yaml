@@ -1,0 +1,297 @@
+# ============================================================
+# Enterprise Agent Platform - Helm Values
+# Production-ready configuration for on-premise Kubernetes
+# ============================================================
+
+# Global image configuration
+image:
+  repository: enterprise-agent-platform
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+  # Uncomment for private registry authentication
+  # pullSecrets:
+  #   - name: regcred
+
+# API Service Configuration
+api:
+  replicaCount: 2
+  port: 8000
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  # Liveness and readiness probes
+  livenessProbe:
+    httpGet:
+      path: /health/live
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /health/ready
+      port: 8000
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# Background Worker Configuration
+worker:
+  replicaCount: 2
+  concurrency: 4
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# Frontend Service Configuration
+frontend:
+  enabled: true
+  replicaCount: 1
+  port: 5173
+
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 101  # nginx user
+    runAsGroup: 101
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# PostgreSQL Configuration (via Bitnami chart)
+postgresql:
+  enabled: true
+  auth:
+    username: app
+    password: app_password  # OVERRIDE IN PRODUCTION
+    database: enterprise_agents
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+      storageClass: ""  # Use cluster default
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+    initdb:
+      scripts:
+        init_pgvector.sql: |
+          CREATE EXTENSION IF NOT EXISTS vector;
+
+# Redis Configuration (via Bitnami chart)
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    password: ""  # REQUIRED: Set via --set redis.auth.password=...
+  master:
+    persistence:
+      enabled: true
+      size: 5Gi
+      storageClass: ""  # Use cluster default
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+
+# Ollama Configuration (Local LLM - Dev/Test only)
+ollama:
+  enabled: false  # Disabled in prod, use vLLM instead
+  image:
+    repository: ollama/ollama
+    tag: latest
+  resources:
+    requests:
+      memory: "4Gi"
+      cpu: "2000m"
+    limits:
+      nvidia.com/gpu: 1
+
+# vLLM Configuration (Production LLM Inference)
+vllm:
+  enabled: true
+  modelName: "Qwen/Qwen2.5-72B-Instruct"
+  gpuCount: 2
+  image:
+    repository: vllm/vllm-openai
+    tag: latest
+  resources:
+    requests:
+      memory: "32Gi"
+      cpu: "8000m"
+    limits:
+      nvidia.com/gpu: 2
+
+# LiteLLM Proxy Configuration
+litellm:
+  enabled: true
+  port: 4000
+  image:
+    repository: ghcr.io/berriai/litellm
+    tag: main-latest
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# Ingress Configuration
+ingress:
+  enabled: false  # Enable for external access
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  host: agents.example.com
+  tls:
+    enabled: true
+    secretName: enterprise-agent-platform-tls
+
+# Application Configuration
+config:
+  # Application
+  environment: prod
+  debug: false
+
+  # Database
+  dbEchoSql: false
+
+  # LiteLLM
+  litellmDefaultModel: "openai/gpt-4o-mini"
+  litellmEmbeddingModel: "openai/text-embedding-3-small"
+
+  # Model Routing & Token Economy
+  modelRoutingEnabled: true
+  modelLight: "ollama/qwen2.5:7b"
+  modelStandard: "ollama/qwen2.5:32b"
+  modelHeavy: "vllm/qwen2.5:72b"
+  tokenBudgetDaily: 1000000
+  tokenBudgetMonthly: 20000000
+
+  # OIDC / Auth
+  oidcIssuerUrl: "https://auth.example.com/realms/production"
+  oidcClientId: "enterprise-agents"
+  oidcAudience: "enterprise-agents-api"
+
+  # Rate Limiting
+  rateLimitPerMinute: 60
+
+  # RAG / Document Processing
+  chunkSizeTokens: 512
+  chunkOverlapTokens: 50
+  vectorTopK: 5
+  embeddingDimensions: 1536
+
+  # Infrastructure
+  backgroundWorkerConcurrency: 4
+  otlpEndpoint: "http://opentelemetry-collector:4317"
+  enableTelemetry: false
+
+# Secrets (reference external secrets in production)
+secrets:
+  # CRITICAL: Override these in production
+  # Recommended: Use external-secrets or sealed-secrets
+  # REQUIRED: All secrets must be overridden via --set or external-secrets
+  secretKey: ""       # REQUIRED: --set secrets.secretKey=<random-64-char>
+  devJwtSecret: ""    # Only needed for non-prod environments
+  litellmApiKey: ""   # REQUIRED: --set secrets.litellmApiKey=<key>
+
+  # External secret reference (alternative to inline values)
+  # useExternalSecret: true
+  # externalSecretName: enterprise-agent-platform-secrets
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: true
+  api:
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# Network Policy
+networkPolicy:
+  enabled: true
+  policyTypes:
+    - Ingress
+    - Egress
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Monitoring & Observability
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+    path: /metrics
+    labels:
+      prometheus: kube-prometheus

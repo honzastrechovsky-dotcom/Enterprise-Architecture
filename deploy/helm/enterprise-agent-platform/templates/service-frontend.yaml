@@ -1,0 +1,17 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "enterprise-agent-platform.fullname" . }}-frontend
+  labels:
+    {{- include "enterprise-agent-platform.frontend.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "enterprise-agent-platform.frontend.selectorLabels" . | nindent 4 }}
+{{- end }}
