@@ -49,10 +49,12 @@ Unlike generic LLM platforms, this system provides:
 2. **Structured Reasoning** - OBSERVE→THINK→VERIFY loops with RedTeam, FirstPrinciples, and Council thinking tools
 3. **Enterprise Integration** - Native SAP RFC/OData, MES connectors with SQL injection protection
 4. **Human-in-the-Loop Safety** - All write operations require approval before execution with rollback support
-5. **Air-Gap Ready** - Fully operational without internet access using Ollama for on-premise LLM deployment
+5. **Air-Gap Ready** - Fully operational without internet access using Ollama/vLLM for on-premise LLM deployment
 6. **Compliance by Design** - Automated evidence generation for SOC 2, GDPR Article 15/17/20, ISO 27001
+7. **Intelligence Loop** - Agent memory injection, feedback-driven learning, and auto-composition for smarter responses over time
+8. **Persistent User Goals** - Goals span conversations; the platform tracks progress across sessions
 
-Built using a **Sonnet+Opus pooling pattern** (~35 Sonnet agents for implementation, 5 Opus agents for architecture and security review) across multiple sessions. Opus security audit (Phase 11) identified and resolved 20 issues including CRITICAL auth bypasses and SQL injection vectors.
+Built using a **Sonnet+Opus pooling pattern** (~35 Sonnet agents for implementation, 4 Opus agents for architecture and security review) across 3 development sessions. Opus 4.6 security audit identified and resolved 20 issues including CRITICAL auth bypasses and SQL injection vectors.
 
 ---
 
@@ -74,13 +76,22 @@ Built using a **Sonnet+Opus pooling pattern** (~35 Sonnet agents for implementat
 
 - **Advanced Agent Orchestration**
   - Composition patterns: Pipeline, FanOut, Gate, TDDLoop
-  - Specialist agents: Document Analyst, Maintenance Advisor, Data Analyst, Generalist
+  - Auto-composition: complexity classifier selects the right pattern automatically
+  - Specialist agents: Document Analyst, Maintenance Advisor, Data Analyst, Quality Inspector, Generalist
   - Model routing with 3-tier complexity detection (LIGHT/STANDARD/HEAVY)
-  - Automatic fallback on model failures
+  - Automatic fallback and escalation on model failures
+
+- **Intelligence Loop (Phase 11)**
+  - Agent memory injected into system prompts — agents know the user's history and preferences
+  - Feedback-driven learning: thumbs up/down updates memory and influences future RAG retrieval
+  - Post-response LEARN step: extracts lessons and stores as memory
+  - Persistent user goals spanning multiple conversations
+  - Auto-composition: SIMPLE → direct agent, DEEP → Pipeline, MULTI-PERSPECTIVE → FanOut, QUALITY-CRITICAL → Gate
 
 - **Enterprise-Grade RAG**
   - Hybrid search combining vector similarity (pgvector) and BM25 keyword matching
   - Reranking pipeline for relevance optimization
+  - Feedback-weighted retrieval: positive-rated sources boosted, negative-rated deprioritized
   - Document versioning and citation tracking
   - Multi-format ingestion: PDF, DOCX, TXT, Markdown
 
@@ -88,17 +99,20 @@ Built using a **Sonnet+Opus pooling pattern** (~35 Sonnet agents for implementat
   - **SAP:** RFC and OData connectors with credential vault integration
   - **MES Systems:** ODBC/pyodbc with SQL Guard (query validation and sanitization)
   - **Human-in-the-Loop (HITL):** Approval workflow for all write operations with rollback capability
-  - **Async Execution:** Celery-based background jobs for long-running operations
+  - **Async Execution:** Background jobs for long-running operations
 
 - **Model Economy & Routing**
   - 3-tier routing: 7B models (LIGHT), 32B models (STANDARD), 72B models (HEAVY)
+  - Automatic model escalation on failure (7B → 32B → 72B)
   - Per-tenant token budgets with overflow protection
-  - LiteLLM proxy for multi-provider support (OpenAI, Anthropic, Azure, AWS)
+  - LiteLLM proxy for multi-provider support (OpenAI, Anthropic, Azure, vLLM)
   - Ollama integration for on-premise deployment (air-gap environments)
 
 - **Security & Compliance**
   - JWT authentication (RS256/HS256) with OIDC/Keycloak integration
+  - SAML 2.0 SSO support
   - Role-based access control (RBAC): Admin, Operator, Viewer
+  - API key authentication for machine-to-machine access
   - PII redaction with configurable regex patterns
   - Prompt injection detection using classifier models
   - Data classification labels (PUBLIC/INTERNAL/CONFIDENTIAL/RESTRICTED)
@@ -110,14 +124,16 @@ Built using a **Sonnet+Opus pooling pattern** (~35 Sonnet agents for implementat
   - Structured logging with `structlog`
   - OpenTelemetry tracing for distributed request tracking
   - Prometheus metrics (request latency, token usage, error rates)
+  - Grafana dashboards: LLM Performance, Agent Operations, Tenant Budgets, Overview
+  - Loki + Promtail log aggregation
   - Health checks: `/health/live`, `/health/ready`
-  - Grafana-compatible monitoring dashboards
 
 - **Internationalization & Scale**
   - Multi-region replication support (active-passive, active-active)
   - i18n framework for multi-language deployments
   - Fine-tuning workflows for domain adaptation
   - Read replica routing for read-heavy workloads
+  - Edge deployment support for network-isolated sites
 
 ---
 
@@ -147,15 +163,16 @@ The platform implements a **7-layer architecture** with defense-in-depth securit
 ┌──────────────────────────────────────────────────────────────────┐
 │ LAYER 4: AGENT RUNTIME                                           │
 │   Goal Planner │ Agent Memory │ Model Router                     │
-│   Composition Patterns: Pipeline │ FanOut │ Gate │ TDDLoop      │
-│   Token Budgets │ Complexity Detection │ Fallback Logic         │
+│   Auto-Composition: Pipeline │ FanOut │ Gate │ TDDLoop          │
+│   Token Budgets │ Complexity Detection │ Fallback + Escalation  │
 └──────────────────────────────────────────────────────────────────┘
                             │
 ┌──────────────────────────────────────────────────────────────────┐
 │ LAYER 3: REASONING ENGINE                                        │
-│   OBSERVE → THINK → VERIFY Loop                                 │
+│   OBSERVE → THINK → VERIFY → LEARN Loop                        │
 │   Thinking Tools: RedTeam │ FirstPrinciples │ Council           │
 │   Specialist Agents: DocumentAnalyst │ MaintenanceAdvisor │ ... │
+│   Memory Injection │ Feedback-Weighted Retrieval                │
 └──────────────────────────────────────────────────────────────────┘
                             │
 ┌──────────────────────────────────────────────────────────────────┐
@@ -167,9 +184,8 @@ The platform implements a **7-layer architecture** with defense-in-depth securit
                             │
 ┌──────────────────────────────────────────────────────────────────┐
 │ LAYER 1: MODEL & INFRASTRUCTURE                                  │
-│   LiteLLM (multi-provider) │ Ollama (on-prem)                    │
+│   LiteLLM (multi-provider) │ vLLM/Ollama (on-prem)              │
 │   PostgreSQL 16 + pgvector │ Redis (rate limit/cache)            │
-│   Celery + RabbitMQ (async jobs)                                 │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -180,6 +196,7 @@ The platform implements a **7-layer architecture** with defense-in-depth securit
 - **Immutable Audit:** All operations logged to `audit_logs` table with tamper detection
 - **HITL Gate:** All write operations require human approval before execution
 - **Zero Trust:** No operation trusts prior validation; every layer re-validates tenant/user/permissions
+- **Intelligence Loop:** Memory → Reasoning → Response → Learn → Memory (gets smarter per user)
 
 ---
 
@@ -195,8 +212,8 @@ The platform implements a **7-layer architecture** with defense-in-depth securit
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/honzastrechovsky-dotcom/enterprise-agent-platform-v2.git
-cd enterprise-agent-platform-v2
+git clone https://github.com/honzastrechovsky-dotcom/Enterprise-Architecture.git
+cd Enterprise-Architecture
 
 # 2. Configure environment
 cp .env.example .env
@@ -286,6 +303,7 @@ All configuration is managed via environment variables. Copy `.env.example` to `
 | `OIDC_CLIENT_ID` | OIDC client identifier | `enterprise-agents` |
 | `OIDC_AUDIENCE` | Expected JWT audience | `enterprise-agents-api` |
 | `DEV_JWT_SECRET` | Dev-only JWT secret (skip OIDC) | `dev-only-secret` |
+| `JWKS_LOCAL_PATH` | Offline JWKS for air-gap | `/config/jwks.json` |
 | **Security** |
 | `CORS_ALLOWED_ORIGINS` | Allowed CORS origins (JSON list) | `["https://app.example.com"]` |
 | `RATE_LIMIT_PER_MINUTE` | Rate limit per user | `60` |
@@ -301,7 +319,7 @@ All configuration is managed via environment variables. Copy `.env.example` to `
 
 - **Production:** Set `ENVIRONMENT=prod`, generate secure `SECRET_KEY`, configure OIDC with real identity provider
 - **Development:** Use `DEV_JWT_SECRET` to skip OIDC validation (dev mode accepts JWT with HS256)
-- **Air-Gap:** Set `OLLAMA_BASE_URL` and `OLLAMA_DEFAULT_MODEL` to use on-premise LLMs without internet
+- **Air-Gap:** Set `OLLAMA_BASE_URL` and use `litellm_config.prod.yaml` with vLLM-only endpoints. Use `JWKS_LOCAL_PATH` for offline JWT validation
 - **CORS:** In production, specify exact allowed origins; dev mode allows all origins
 
 ---
@@ -371,6 +389,15 @@ curl -X POST http://localhost:8000/api/v1/documents/upload \
   -F "metadata={\"department\":\"maintenance\",\"version\":\"2.1\"}"
 ```
 
+#### Memory & Goals
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| `GET` | `/api/v1/memory` | viewer+ | Recall agent memories for current user |
+| `GET` | `/api/v1/goals` | viewer+ | List user's persistent goals |
+| `POST` | `/api/v1/goals` | viewer+ | Create a new persistent goal |
+| `PATCH` | `/api/v1/goals/{id}` | viewer+ | Update goal progress |
+
 #### Administration
 
 | Method | Endpoint | Role | Description |
@@ -390,6 +417,14 @@ curl -X POST http://localhost:8000/api/v1/documents/upload \
 | `POST` | `/api/v1/compliance/gdpr/erasure-request` | viewer+ | GDPR Article 17 right to erasure |
 | `GET` | `/api/v1/compliance/iso27001/controls` | admin | ISO 27001 control verification status |
 
+#### Feedback & Analytics
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| `POST` | `/api/v1/feedback` | viewer+ | Submit thumbs up/down with optional comment |
+| `GET` | `/api/v1/analytics/metrics` | admin | Platform-wide usage metrics |
+| `GET` | `/api/v1/analytics/costs` | admin | Token usage and cost tracking |
+
 #### Health & Status
 
 | Method | Endpoint | Role | Description |
@@ -402,172 +437,279 @@ curl -X POST http://localhost:8000/api/v1/documents/upload \
 
 - **Interactive Docs:** `http://localhost:8000/docs` (Swagger UI)
 - **OpenAPI Spec:** `http://localhost:8000/openapi.json`
-- **Detailed Guides:** See `docs/api/` directory
 
 ---
 
 ## Project Structure
 
 ```
-enterprise-agent-platform/
-├── src/                          # Python source code
-│   ├── main.py                   # FastAPI app entry point + middleware
-│   ├── config.py                 # Centralized settings (pydantic-settings)
-│   ├── database.py               # SQLAlchemy async engine + session factory
+Enterprise-Architecture/
+├── src/                              # Python source (215 files, ~63K lines)
+│   ├── main.py                       # FastAPI app entry point + middleware
+│   ├── config.py                     # Centralized settings (pydantic-settings)
+│   ├── database.py                   # SQLAlchemy async engine + session factory
 │   │
-│   ├── models/                   # SQLAlchemy ORM models
-│   │   ├── user.py               # User model (tenant-scoped)
-│   │   ├── conversation.py       # Conversation and Message models
-│   │   ├── document.py           # Document metadata and chunks
-│   │   ├── audit_log.py          # Immutable audit log
-│   │   └── approval.py           # HITL approval workflow
+│   ├── models/                       # SQLAlchemy ORM models (20 models)
+│   │   ├── user.py                   # User model (tenant-scoped)
+│   │   ├── conversation.py           # Conversation + Message
+│   │   ├── document.py               # Document metadata + chunks
+│   │   ├── audit.py                  # Immutable audit log
+│   │   ├── feedback.py               # User feedback (thumbs up/down)
+│   │   ├── agent_memory.py           # Agent memory (FACT/PREFERENCE/SKILL/CONTEXT/EPISODIC)
+│   │   ├── user_goal.py              # Persistent user goals
+│   │   ├── write_operation.py        # HITL write operation records
+│   │   ├── fine_tuning.py            # Fine-tuning job records
+│   │   ├── gdpr_request.py           # GDPR data subject requests
+│   │   └── ...                       # tenant, plugin, webhook, api_key, etc.
 │   │
-│   ├── api/routes/               # REST API endpoints
-│   │   ├── chat.py               # Chat endpoint with SSE streaming
-│   │   ├── documents.py          # Document upload/list/delete
-│   │   ├── admin.py              # User management, audit logs
-│   │   ├── compliance.py         # SOC 2/GDPR/ISO export endpoints
-│   │   └── health.py             # Health checks + metrics
+│   ├── api/                          # REST API endpoints
+│   │   ├── chat.py                   # Chat with SSE streaming
+│   │   ├── conversations.py          # Conversation CRUD
+│   │   ├── documents.py              # Document upload/list/delete
+│   │   ├── admin.py                  # User management, audit logs
+│   │   ├── compliance.py             # SOC 2/GDPR/ISO export endpoints
+│   │   ├── compliance_admin.py       # Compliance dashboard data
+│   │   ├── analytics.py              # Usage metrics + cost tracking
+│   │   ├── feedback.py               # Feedback submission + export
+│   │   ├── goals.py                  # Persistent goals API
+│   │   ├── memory.py                 # Agent memory API
+│   │   ├── health.py                 # Health checks + Prometheus metrics
+│   │   ├── keys.py                   # API key management
+│   │   ├── plugins.py                # Plugin management
+│   │   ├── sso.py                    # SSO/OIDC endpoints
+│   │   ├── webhooks.py               # Webhook configuration
+│   │   └── routes/                   # Additional route modules
+│   │       ├── operations.py         # Write operations API
+│   │       └── spaces.py             # Shared spaces
 │   │
-│   ├── auth/                     # Authentication & authorization
-│   │   ├── jwt_validator.py      # JWT signature + claims validation
-│   │   ├── oidc.py               # OIDC/Keycloak integration
-│   │   ├── rbac.py               # Role-based access control
-│   │   └── tenant_context.py     # Tenant isolation context manager
+│   ├── auth/                         # Authentication & authorization
+│   │   ├── dependencies.py           # JWT validation + tenant extraction
+│   │   ├── middleware.py             # Auth middleware (JWT Bearer)
+│   │   ├── oidc.py                   # OIDC/Keycloak integration
+│   │   ├── saml.py                   # SAML 2.0 SSO
+│   │   └── api_key_auth.py           # API key authentication
 │   │
-│   ├── core/                     # Core policy & security
-│   │   ├── policy_engine.py      # Data classification, PII redaction
-│   │   ├── audit.py              # Audit log creation + verification
-│   │   ├── rate_limiter.py       # Redis-backed rate limiting
-│   │   └── prompt_injection.py   # Injection detection classifier
+│   ├── core/                         # Core policy & security
+│   │   ├── pii.py                    # PII redaction engine
+│   │   ├── audit.py                  # Audit log creation + verification
+│   │   ├── security.py               # Security utilities
+│   │   ├── classification.py         # Data classification enforcement
+│   │   ├── input_validation.py       # Input sanitization
+│   │   ├── rate_limit.py             # Redis-backed rate limiting
+│   │   ├── policy.py                 # Policy engine
+│   │   ├── disclosure.py             # AI disclosure requirements
+│   │   └── export_control.py         # EAR/ITAR export control
 │   │
-│   ├── agent/                    # Agent runtime & reasoning
-│   │   ├── runtime.py            # Main agent execution loop
-│   │   ├── reasoning.py          # OBSERVE→THINK→VERIFY loop
-│   │   ├── orchestrator.py       # Multi-agent composition
-│   │   ├── registry.py           # Agent type registry
+│   ├── agent/                        # Agent runtime & reasoning
+│   │   ├── runtime.py                # Main agent execution loop + memory injection
+│   │   ├── reasoning.py              # OBSERVE→THINK→VERIFY→LEARN loop
+│   │   ├── orchestrator.py           # Multi-agent composition + auto-selection
+│   │   ├── registry.py               # Agent type registry
+│   │   ├── llm.py                    # LLM client wrapper
+│   │   ├── tools.py                  # Agent tool definitions
 │   │   │
-│   │   ├── composition/          # Orchestration patterns
-│   │   │   ├── patterns.py       # Pipeline, FanOut, Gate, TDDLoop
-│   │   │   ├── goal_planner.py   # Task decomposition
-│   │   │   └── agent_memory.py   # Conversation memory
+│   │   ├── composition/              # Orchestration patterns
+│   │   │   ├── patterns.py           # Pipeline, FanOut, Gate, TDDLoop
+│   │   │   ├── goal_planner.py       # DAG decomposition + persistent goals
+│   │   │   └── agent_memory.py       # Memory injection + recall
 │   │   │
-│   │   ├── thinking/             # Thinking tools
-│   │   │   ├── redteam.py        # Adversarial analysis (32 agents)
-│   │   │   ├── first_principles.py  # Deconstruction reasoning
-│   │   │   └── council.py        # Multi-agent debate (3-7 agents)
+│   │   ├── thinking/                 # Thinking tools
+│   │   │   ├── red_team.py           # Adversarial analysis
+│   │   │   ├── first_principles.py   # Deconstruction reasoning
+│   │   │   └── council.py            # Multi-agent debate
 │   │   │
-│   │   ├── specialists/          # Domain-specific agents
+│   │   ├── specialists/              # Domain-specific agents
 │   │   │   ├── document_analyst.py
 │   │   │   ├── maintenance_advisor.py
 │   │   │   ├── data_analyst.py
+│   │   │   ├── quality_inspector.py
+│   │   │   ├── procedure_expert.py
 │   │   │   └── generalist.py
 │   │   │
-│   │   └── model_router/         # Tier-based model routing
-│   │       ├── router.py         # Main routing logic
-│   │       ├── complexity.py     # Complexity detection
-│   │       ├── fallback.py       # Automatic retry with higher tier
-│   │       ├── budget.py         # Token budget enforcement
-│   │       └── metrics.py        # Routing decision metrics
+│   │   └── model_router/             # Tier-based model routing
+│   │       ├── router.py             # Main routing logic
+│   │       ├── complexity.py         # Complexity detection + auto-escalation
+│   │       ├── fallback.py           # Automatic retry with higher tier
+│   │       ├── budget.py             # Token budget enforcement
+│   │       └── metrics.py            # Routing decision metrics
 │   │
-│   ├── rag/                      # Retrieval-Augmented Generation
-│   │   ├── ingestion.py          # Document chunking + embedding
-│   │   ├── retrieval.py          # Hybrid search (vector + BM25)
-│   │   ├── reranker.py           # Relevance reranking
-│   │   ├── citations.py          # Citation extraction + formatting
-│   │   └── versioning.py         # Document version management
+│   ├── reasoning/                    # Advanced reasoning strategies
+│   │   └── strategies/
+│   │       ├── chain_of_thought.py   # Standard CoT
+│   │       ├── tree_of_thought.py    # Tree-based exploration
+│   │       ├── self_consistency.py   # Multiple paths + majority vote
+│   │       └── rar.py                # Retrieval-Augmented Reasoning
 │   │
-│   ├── connectors/               # Enterprise system integrations
-│   │   ├── sap/
-│   │   │   ├── rfc_client.py     # SAP RFC connector
-│   │   │   └── odata_client.py   # SAP OData API client
-│   │   ├── mes/
-│   │   │   ├── mes_client.py     # MES ODBC connector
-│   │   │   └── sql_guard.py      # SQL injection prevention
-│   │   └── credential_vault.py   # Encrypted credential storage
+│   ├── rag/                          # Retrieval-Augmented Generation
+│   │   ├── ingest.py                 # Document chunking + embedding
+│   │   ├── retrieve.py               # Hybrid search (vector + BM25)
+│   │   ├── hybrid_search.py          # Search implementation
+│   │   ├── reranker.py               # Relevance reranking
+│   │   ├── citations.py              # Citation extraction + formatting
+│   │   ├── versioning.py             # Document version management
+│   │   ├── metadata_filter.py        # Metadata-based filtering
+│   │   └── conversation_memory.py    # Conversation context for RAG
 │   │
-│   ├── operations/               # Write operations + HITL
-│   │   ├── approval_workflow.py  # Human-in-the-loop approval
-│   │   ├── sap_writer.py         # SAP write operations
-│   │   ├── mes_writer.py         # MES write operations
-│   │   └── rollback.py           # Operation rollback on failure
+│   ├── connectors/                   # Enterprise system integrations
+│   │   ├── sap.py                    # SAP RFC/OData connector
+│   │   ├── mes.py                    # MES ODBC connector
+│   │   ├── sql_guard.py              # SQL injection prevention
+│   │   ├── approval.py               # HITL approval workflow
+│   │   ├── base.py                   # Connector base class + registry
+│   │   └── cache.py                  # Connector response caching
 │   │
-│   ├── compliance/               # Compliance frameworks
-│   │   ├── standards/            # Industry compliance standards
-│   │   │   ├── data_classification.py  # Data classification enforcement
-│   │   │   └── export_control.py       # Export control tracking
-│   │   ├── soc2/
-│   │   │   └── evidence_export.py      # SOC 2 Type II evidence
-│   │   ├── gdpr/
-│   │   │   ├── data_subject_rights.py  # Articles 15/17/20
-│   │   │   └── consent_management.py
-│   │   └── iso27001/
-│   │       └── control_verification.py # Annex A mapping
+│   ├── operations/                   # Write operations + HITL
+│   │   ├── write_framework.py        # Approval workflow (PROPOSED→APPROVED→EXECUTED)
+│   │   ├── sap_writer.py             # SAP write operations
+│   │   ├── mes_writer.py             # MES write operations
+│   │   ├── escalation.py             # Timeout escalation logic
+│   │   └── notification.py           # Email + webhook notifications
 │   │
-│   ├── infra/                    # Infrastructure & observability
-│   │   ├── telemetry.py          # OpenTelemetry tracing
-│   │   ├── metrics.py            # Prometheus metrics
-│   │   ├── logging.py            # Structured logging setup
-│   │   ├── health.py             # Health check logic
-│   │   └── workers.py            # Celery worker configuration
+│   ├── compliance/                   # Compliance frameworks
+│   │   ├── audit_export.py           # SOC 2 Type II evidence export
+│   │   ├── gdpr.py                   # GDPR Articles 15/17/20
+│   │   ├── iso27001.py               # ISO 27001 Annex A control mapping
+│   │   ├── dashboard.py              # Compliance dashboard data
+│   │   ├── evidence.py               # Evidence collection
+│   │   ├── monitor.py                # Continuous compliance monitoring
+│   │   ├── scheduler.py              # Automated compliance checks
+│   │   └── testing.py                # Compliance test utilities
 │   │
-│   ├── scale/                    # Scaling & replication
-│   │   ├── replication.py        # Multi-region replication
-│   │   ├── i18n.py               # Internationalization
-│   │   ├── air_gap.py            # Air-gap deployment support
-│   │   └── fine_tuning.py        # Model fine-tuning workflows
+│   ├── services/                     # Business logic services
+│   │   ├── conversation.py           # Conversation management
+│   │   ├── memory.py                 # Memory service (5 types, semantic search, decay)
+│   │   ├── feedback.py               # Feedback → memory pipeline
+│   │   ├── finetuning.py             # Fine-tuning job management
+│   │   ├── goal_service.py           # Persistent goal tracking
+│   │   ├── analytics.py              # Analytics aggregation
+│   │   ├── api_keys.py               # API key lifecycle
+│   │   ├── ingestion.py              # Document ingestion pipeline
+│   │   └── webhook.py                # Webhook delivery
 │   │
-│   └── scripts/                  # Database & deployment scripts
-│       ├── init_db.py            # Schema initialization
-│       ├── seed_data.py          # Test data seeding
-│       └── migrate.py            # Migration utilities
+│   ├── infra/                        # Infrastructure & observability
+│   │   ├── telemetry.py              # OpenTelemetry tracing
+│   │   ├── streaming.py              # SSE streaming utilities
+│   │   ├── health.py                 # Health check logic
+│   │   └── background_worker.py      # Background job execution
+│   │
+│   ├── scale/                        # Scaling & deployment
+│   │   ├── air_gap.py                # Air-gap deployment support
+│   │   ├── fine_tuning.py            # Model fine-tuning workflows
+│   │   ├── i18n.py                   # Internationalization
+│   │   ├── replication.py            # Read replica routing
+│   │   └── shared_spaces.py          # Cross-tenant shared spaces
+│   │
+│   ├── multiregion/                  # Multi-region support
+│   │   ├── routing.py                # Region-aware request routing
+│   │   ├── replication.py            # Data replication
+│   │   └── failover.py               # Automatic failover
+│   │
+│   ├── websocket/                    # WebSocket support
+│   │   ├── manager.py                # Connection management
+│   │   ├── chat.py                   # Real-time chat
+│   │   └── events.py                 # Event broadcasting
+│   │
+│   ├── plugins/                      # Plugin SDK
+│   │   ├── base.py                   # Plugin base class
+│   │   ├── registry.py               # Plugin registry (tenant-scoped)
+│   │   ├── loader.py                 # Dynamic plugin loading
+│   │   ├── tool_plugin.py            # Tool plugin interface
+│   │   └── hot_reload.py             # Hot-reload support
+│   │
+│   ├── skills/                       # Built-in skills
+│   │   ├── registry.py               # Skill registry
+│   │   └── builtin/                  # 4 built-in skills
+│   │       ├── document_analysis.py
+│   │       ├── procedure_lookup.py
+│   │       ├── report_generation.py
+│   │       └── calculations.py
+│   │
+│   ├── sdk/                          # Client SDK generator
+│   │   ├── generator.py              # Multi-language SDK generation
+│   │   └── templates/                # Python, TypeScript, Go templates
+│   │
+│   └── scripts/                      # Database & deployment scripts
+│       ├── init_db.py                # Schema initialization
+│       └── seed_data.py              # Test data seeding
 │
-├── tests/                        # Test suite
-│   ├── conftest.py               # Pytest fixtures
-│   ├── test_tenant_isolation.py  # CRITICAL: Cross-tenant tests
-│   ├── test_auth.py              # JWT + RBAC enforcement
-│   ├── test_chat.py              # Chat endpoint + audit
-│   ├── test_rag.py               # RAG pipeline + citations
-│   ├── test_reasoning.py         # OBSERVE→THINK→VERIFY loop
-│   ├── test_connectors.py        # SAP/MES integration tests
-│   └── test_compliance.py        # Compliance export tests
+├── tests/                            # Test suite (92 files, ~31K lines)
+│   ├── conftest.py                   # Pytest fixtures
+│   ├── agent/                        # Agent runtime + reasoning tests
+│   ├── api/                          # API endpoint tests
+│   ├── auth/                         # Authentication tests
+│   ├── compliance/                   # Compliance framework tests
+│   ├── connectors/                   # SAP/MES connector tests
+│   ├── core/                         # Security + PII tests
+│   ├── infra/                        # Health check tests
+│   ├── integration/                  # Full-stack integration tests
+│   ├── load/                         # Locust + k6 load tests
+│   ├── models/                       # ORM model tests
+│   ├── operations/                   # Write operation tests
+│   ├── plugins/                      # Plugin SDK tests
+│   ├── rag/                          # RAG pipeline tests
+│   └── services/                     # Service layer tests
 │
-├── frontend/                     # React 19 web UI
+├── frontend/                         # React 19 web UI (23 TS/TSX files)
 │   ├── src/
-│   │   ├── components/           # React components
-│   │   ├── pages/                # Page routes
-│   │   ├── api/                  # API client with SSE support
-│   │   └── App.tsx               # Main app component
-│   ├── package.json              # Node dependencies
-│   └── vite.config.ts            # Vite build config
+│   │   ├── App.tsx                   # Main app + routing
+│   │   ├── components/               # ChatMessage, DocumentUpload, Sidebar, shadcn/ui
+│   │   ├── pages/                    # Chat, Agents, Documents, Admin, Login
+│   │   └── lib/                      # API client (SSE), auth, utils
+│   ├── package.json
+│   └── vite.config.ts
 │
-├── docs/                         # Documentation
-│   ├── architecture/             # Architecture diagrams + ADRs
-│   ├── api/                      # API reference guides
-│   ├── deployment/               # Deployment guides
-│   └── roadmap/                  # Project roadmap
+├── docs/                             # Documentation
+│   ├── ARCHITECTURE.md               # System architecture (625 lines)
+│   ├── RUNBOOK.md                    # Deployment runbook (1,185 lines)
+│   ├── PAI_GAP_ANALYSIS.md           # Algorithm gap analysis
+│   ├── PLUGIN_SDK.md                 # Plugin developer guide
+│   ├── roadmap/ROADMAP.md            # Unified project roadmap
+│   └── ...                           # Phase docs, observability guides
 │
-├── deploy/                       # Deployment configuration
-│   └── helm/                     # Kubernetes Helm charts
-│       ├── Chart.yaml
-│       ├── values.yaml
-│       └── templates/
+├── deploy/                           # Deployment configuration
+│   ├── helm/                         # Kubernetes Helm charts (18 files)
+│   │   ├── Chart.yaml
+│   │   ├── values.yaml
+│   │   ├── values-multiregion.yaml
+│   │   └── templates/                # API, frontend, LiteLLM, vLLM, worker, HPA, PDB, NetworkPolicy
+│   ├── grafana/                      # Monitoring stack
+│   │   ├── dashboards/               # 4 Grafana dashboards (LLM, Agents, Budgets, Overview)
+│   │   ├── prometheus.yml
+│   │   └── docker-compose.monitoring.yml
+│   ├── logging/                      # Log aggregation
+│   │   ├── loki-config.yml
+│   │   ├── promtail-config.yml
+│   │   └── docker-compose.logging.yml
+│   └── edge/                         # Edge deployment
+│       ├── Dockerfile.edge
+│       └── docker-compose.edge.yml
 │
-├── alembic/                      # Database migrations
-│   ├── versions/                 # Migration files
-│   └── env.py                    # Alembic configuration
+├── alembic/                          # Database migrations (18 migrations)
+│   ├── versions/                     # 001–018: conversations → foreign keys
+│   └── env.py
 │
-├── docker-compose.yml            # Production stack
-├── docker-compose.dev.yml        # Development with Ollama
-├── Dockerfile                    # API container image
-├── .env.example                  # Environment variable template
-├── pyproject.toml                # Python dependencies + tooling
-├── pytest.ini                    # Pytest configuration
-├── README.md                     # This file
-├── LICENSE                       # Proprietary license
-├── SECURITY.md                   # Security policy
-├── COMPLIANCE.md                 # Compliance details
-└── PROJECT_STATUS.md             # Current project status
+├── scripts/                          # Operational scripts
+│   ├── backup/                       # pg_dump/restore automation
+│   ├── build_offline.sh              # Air-gap Docker build
+│   ├── dev-start.sh                  # Dev environment launcher
+│   └── db-maintenance.py             # Database maintenance
+│
+├── tools/                            # Developer tools
+│   └── eap-cli/                      # CLI for plugin scaffolding
+│
+├── docker-compose.yml                # Production stack
+├── docker-compose.dev.yml            # Development with Ollama
+├── Dockerfile                        # API container image
+├── litellm_config.yaml               # LiteLLM dev config
+├── litellm_config.prod.yaml          # LiteLLM production (vLLM-only, air-gap)
+├── .env.example                      # Environment variable template
+├── pyproject.toml                    # Python dependencies + ruff/mypy/pytest config
+├── README.md                         # This file
+├── LICENSE                           # Proprietary license
+├── SECURITY.md                       # Security policy + disclosure
+├── COMPLIANCE.md                     # Compliance control mapping
+├── PROJECT_STATUS.md                 # Detailed phase completion status
+└── NOTICE.md                         # Third-party licenses
 ```
 
 ---
@@ -615,7 +757,8 @@ open htmlcov/index.html
 # Run specific test categories
 pytest tests/test_tenant_isolation.py -v  # CRITICAL: Multi-tenancy tests
 pytest tests/test_auth.py -v              # Authentication tests
-pytest tests/test_rag.py -v               # RAG pipeline tests
+pytest tests/rag/ -v                      # RAG pipeline tests
+pytest tests/integration/ -v              # Full integration tests
 
 # Run with detailed output
 pytest -vv --tb=short
@@ -634,8 +777,8 @@ mypy src
 # Security scanning with Bandit
 bandit -r src -ll  # Only high/medium severity
 
-# Run all quality checks
-./scripts/check_quality.sh  # If available
+# Dependency audit
+pip-audit
 ```
 
 ### Database Migrations
@@ -742,34 +885,40 @@ docker stats
 
 ### Kubernetes (Helm)
 
-Helm charts are in progress. Preliminary structure:
-
 ```bash
-# Add Helm repository (when published)
-helm repo add enterprise-agents https://charts.example.com
-
 # Install with custom values
-helm install enterprise-agents enterprise-agents/platform \
+helm install enterprise-agents deploy/helm/enterprise-agent-platform \
   --namespace production \
   --values custom-values.yaml
 
 # Upgrade deployment
-helm upgrade enterprise-agents enterprise-agents/platform \
+helm upgrade enterprise-agents deploy/helm/enterprise-agent-platform \
   --namespace production \
   --values custom-values.yaml
 
 # Rollback
 helm rollback enterprise-agents 1
+
+# Validate chart before deploy
+bash deploy/helm/validate-chart.sh
 ```
 
-**Helm Chart Location:** `deploy/helm/`
+**Helm Chart:** `deploy/helm/enterprise-agent-platform/` — 18 templates including API, frontend, LiteLLM, vLLM, worker deployments, HPA, PDB, NetworkPolicy, Ingress.
 
-**Deployment Documentation:** See `docs/deployment/` for detailed guides on:
-- Kubernetes deployment
-- Load balancer configuration
-- TLS certificate management
-- Database backup and restore
-- Monitoring setup with Prometheus/Grafana
+**Deployment Documentation:** See `deploy/helm/DEPLOYMENT_GUIDE.md` and `deploy/helm/QUICKSTART.md` for detailed guides.
+
+### Air-Gap Deployment
+
+```bash
+# Build Docker images with pre-cached dependencies
+bash scripts/build_offline.sh
+
+# Use production LiteLLM config (vLLM-only, no cloud APIs)
+cp litellm_config.prod.yaml litellm_config.yaml
+
+# Configure offline JWKS for JWT validation
+export JWKS_LOCAL_PATH="/config/jwks.json"
+```
 
 ### Environment-Specific Configuration
 
@@ -786,13 +935,14 @@ helm rollback enterprise-agents 1
 - [ ] Configure OIDC with real identity provider
 - [ ] Set specific `CORS_ALLOWED_ORIGINS`
 - [ ] Enable TLS/HTTPS (certificates via cert-manager or external LB)
-- [ ] Configure PostgreSQL backups (daily snapshots)
-- [ ] Set up monitoring (Prometheus + Grafana)
-- [ ] Configure log aggregation (ELK stack or CloudWatch)
+- [ ] Configure PostgreSQL backups (daily snapshots via `scripts/backup/`)
+- [ ] Set up monitoring (Prometheus + Grafana via `deploy/grafana/`)
+- [ ] Configure log aggregation (Loki + Promtail via `deploy/logging/`)
 - [ ] Enable Sentry or similar error tracking
 - [ ] Review and harden rate limits per tenant
 - [ ] Test disaster recovery procedures
-- [ ] Security scan with Trivy or similar tool
+- [ ] Security scan with Trivy
+- [ ] Use `litellm_config.prod.yaml` (vLLM-only endpoints)
 - [ ] Penetration testing (if required by compliance)
 
 ---
@@ -810,6 +960,8 @@ Request → JWT Validation → RBAC Check → Tenant Filter → Classification �
 1. **Authentication (Layer 1):**
    - JWT Bearer tokens (RS256 in production, HS256 in dev)
    - OIDC/Keycloak integration for SSO
+   - SAML 2.0 support for legacy IdPs
+   - API key authentication for machine-to-machine
    - Token expiration and refresh logic
 
 2. **Authorization (Layer 2):**
@@ -842,6 +994,15 @@ Request → JWT Validation → RBAC Check → Tenant Filter → Classification �
    - SQL Guard for dynamic queries
    - Pydantic validation on all API inputs
 
+### Security Audit
+
+**Opus 4.6 Security Audit** — 20 issues identified and resolved:
+- 5 CRITICAL (auth bypass, SQL injection vectors, scope enforcement)
+- 8 HIGH (missing tenant checks, PII exposure in logs)
+- 7 MEDIUM (CORS misconfiguration, rate limit gaps)
+
+All issues resolved in dedicated security migration (018_add_missing_foreign_keys.py) and code fixes.
+
 ### Security Features
 
 - **Encryption:**
@@ -852,7 +1013,7 @@ Request → JWT Validation → RBAC Check → Tenant Filter → Classification �
 - **Network Security:**
   - CORS with explicit origin allowlist
   - Rate limiting per user and per tenant
-  - API gateway with firewall rules
+  - Kubernetes NetworkPolicy for pod isolation
 
 - **Application Security:**
   - No hardcoded secrets (environment variables only)
@@ -860,11 +1021,15 @@ Request → JWT Validation → RBAC Check → Tenant Filter → Classification �
   - Content Security Policy headers
   - OWASP Top 10 mitigation
 
+- **CI/CD Security Pipeline:**
+  - Bandit (SAST)
+  - pip-audit (dependency scanning)
+  - Trivy (container scanning)
+  - TruffleHog (secret detection)
+
 ### Vulnerability Reporting
 
 For security issues, see [SECURITY.md](SECURITY.md) for responsible disclosure process.
-
-**Security Contact:** [Contact information - add your email or security team]
 
 ---
 
@@ -880,7 +1045,7 @@ The platform implements comprehensive compliance controls for multiple framework
 | **Export Control Policy** | Implemented | Export control tracking (EAR/ITAR classifications) |
 | **Application Security Standard** | Implemented | Secure coding, RBAC, audit logging, encryption |
 | **SOC 2 Type II** | Implemented | Automated evidence export for all trust service criteria |
-| **GDPR** | Implemented | Data subject rights API (Articles 15, 17, 20) |
+| **GDPR** | Implemented | Data subject rights API (Articles 15, 17, 20) with request persistence |
 | **ISO 27001 Annex A** | Implemented | Control mapping + automated verification (35 controls) |
 
 ### Compliance Features
@@ -897,6 +1062,7 @@ The platform implements comprehensive compliance controls for multiple framework
    - Article 15: Right to access personal data
    - Article 17: Right to erasure
    - Article 20: Data portability
+   - All requests persisted in `gdpr_requests` table (migration 016)
 
    ```bash
    # Request data export
@@ -923,8 +1089,6 @@ The platform implements comprehensive compliance controls for multiple framework
 
 - **Detailed Control Mapping:** See [COMPLIANCE.md](COMPLIANCE.md)
 - **ISO 27001 Controls:** 35 controls across 14 domains with verification status
-- **GDPR Implementation Guide:** `docs/compliance/gdpr_implementation.md`
-- **SOC 2 Evidence Checklist:** `docs/compliance/soc2_evidence.md`
 
 ### Audit & Attestation
 
@@ -1048,20 +1212,20 @@ This software is licensed under a **Proprietary License** - see [LICENSE](LICENS
 ### Client Deployment
 
 For production deployment licensing inquiries:
-- Contact: [Add contact information]
+- Contact: honza.strechovsky@gmail.com
 - Custom licensing terms available for enterprise clients
 
 ### Open Source Components
 
-This project uses open source dependencies (see `pyproject.toml`). All third-party licenses are preserved and respected.
+This project uses open source dependencies (see `pyproject.toml`). All third-party licenses are preserved and respected. See [NOTICE.md](NOTICE.md) for details.
 
 ---
 
 ## Roadmap
 
-### All Phases Complete (1-9) — Production Ready
+### Phases 1–11 Complete — Production Ready
 
-**Phases 1-6: Core Platform** ✅
+**Phases 1–6: Core Platform** ✅
 - ✅ Multi-tenant architecture with row-level security
 - ✅ JWT/OIDC authentication + SAML SSO + API keys
 - ✅ Role-based access control (Admin/Operator/Viewer)
@@ -1075,9 +1239,10 @@ This project uses open source dependencies (see `pyproject.toml`). All third-par
 - ✅ Compliance frameworks (SOC 2, GDPR, ISO 27001)
 - ✅ React 19 web UI with SSE streaming
 - ✅ Air-gap deployment with Ollama
-- ✅ Kubernetes Helm charts (17 templates)
+- ✅ Kubernetes Helm charts (18 templates)
 - ✅ Plugin/Extension SDK with sandbox
 - ✅ Analytics dashboard with metrics API
+- ✅ Feedback loop (thumbs up/down → fine-tuning dataset)
 
 **Phase 7: Production Readiness** ✅
 - ✅ CI/CD pipeline (GitHub Actions: lint, typecheck, test, security scan, Docker build)
@@ -1088,7 +1253,7 @@ This project uses open source dependencies (see `pyproject.toml`). All third-par
 - ✅ Security scanning (Bandit, pip-audit, Trivy, TruffleHog)
 
 **Phase 8: Enterprise Polish** ✅
-- ✅ Grafana monitoring dashboards (LLM Performance, Agent Ops, Tenant Budgets)
+- ✅ Grafana monitoring dashboards (LLM Performance, Agent Ops, Tenant Budgets, Overview)
 - ✅ Prometheus metrics + Loki log aggregation
 - ✅ Deployment runbook (1,185 lines) + architecture docs (625 lines)
 - ✅ Load testing suite (Locust + k6)
@@ -1101,17 +1266,35 @@ This project uses open source dependencies (see `pyproject.toml`). All third-par
 - ✅ Escalation notifications (email + webhook)
 - ✅ Write operations persisted to PostgreSQL
 
-**Phase 10: Feature Completion** (in progress)
-- ⬜ Fine-tuning job queue
-- ⬜ Compliance dashboard real data
-- ⬜ Analytics endpoints
-- ⬜ Test suite green (100%)
-- ⬜ Code cleanup
+**Phase 10: Feature Completion** ✅
+- ✅ Fine-tuning job queue (PersistentFineTuningManager, migration 015, 25 tests)
+- ✅ Compliance dashboard real data (DB queries for all compliance metrics)
+- ✅ Test suite fixes (auth dependency tests updated)
+- ✅ Code cleanup (80+ phase comments, TODOs removed across 60+ files)
 
-**Phase 11: State of the Art** (planned)
-- ⬜ Streaming reasoning UI
-- ⬜ Agent evaluation framework
-- ⬜ Conversation analytics dashboards
+**Phase 11: Intelligence Layer** ✅
+- ✅ Air-gapped production config (`litellm_config.prod.yaml`, offline JWKS, `build_offline.sh`)
+- ✅ Memory injection into agent runtime (agents recall user history + preferences)
+- ✅ Learning loop (feedback → memory → improved responses)
+- ✅ Auto-composition selection (complexity classifier → auto Pipeline/FanOut/Gate)
+- ✅ Persistent user goals (migration 017, GoalService, Goals API)
+- ✅ GDPR request persistence (migration 016)
+- ✅ Missing foreign keys added (migration 018)
+
+**Security Audit** ✅
+- ✅ Opus 4.6 comprehensive audit: 20 issues found and resolved
+- ✅ 5 CRITICAL, 8 HIGH, 7 MEDIUM — all fixed with dedicated migration + code changes
+
+### Phase 12: Customer-Driven Expansion (Planned)
+
+Features built only when requested by actual customer deployments:
+
+- **Proactive Monitoring** — Scheduled MES polling, configurable alert thresholds, auto root-cause analysis
+- **Thinking Tools in Main Flow** — Council/FirstPrinciples for complex queries (opt-OUT, not opt-IN)
+- **Agent Quality Evaluation** — Golden dataset + automated scoring for answer quality
+- **Multi-Modal Support** — Vision model for quality inspection images, OCR pipeline
+- **Tenant Admin Portal** — Self-service user/role/API key management
+- **Multi-Site Support** — Edge agents for network-isolated plant locations
 
 ---
 
@@ -1119,11 +1302,13 @@ This project uses open source dependencies (see `pyproject.toml`). All third-par
 
 ### Documentation
 
-- **Architecture:** `docs/architecture/` - System design and ADRs
-- **API Reference:** `docs/api/` - Detailed endpoint documentation
-- **Deployment:** `docs/deployment/` - Kubernetes, Docker, production guides
+- **Architecture:** `docs/ARCHITECTURE.md` - System design (625 lines)
+- **Runbook:** `docs/RUNBOOK.md` - Deployment & operations (1,185 lines)
+- **Plugin SDK:** `docs/PLUGIN_SDK.md` - Plugin developer guide
 - **Compliance:** [COMPLIANCE.md](COMPLIANCE.md) - Control mapping and evidence
 - **Security:** [SECURITY.md](SECURITY.md) - Security model and disclosure process
+- **Project Status:** [PROJECT_STATUS.md](PROJECT_STATUS.md) - Detailed phase tracking
+- **Roadmap:** `docs/roadmap/ROADMAP.md` - Full roadmap with future phases
 
 ### Getting Help
 
@@ -1131,26 +1316,27 @@ This project uses open source dependencies (see `pyproject.toml`). All third-par
 - **Questions:** Discussions tab for general questions
 - **Internal Support:** Contact the deployment organization's platform team
 
-### Project Status
+### Project Scale
 
-Current status: **Phases 1-9 complete** (207 src files, 81 test files, 14 migrations). Phase 10 in progress.
+**215** Python source files (~63K lines) | **92** test files (~31K lines) | **18** Alembic migrations | **23** frontend files | **18** Helm templates | **4** Grafana dashboards
 
-See [PROJECT_STATUS.md](PROJECT_STATUS.md) for detailed progress tracking.
+1235 tests passed, 51 skipped, 0 failures. Security audited by Claude Opus 4.6.
 
 ---
 
 ## Acknowledgments
 
 Built using the **PAI Algorithm** and **Sonnet+Opus pooling pattern**:
-- ~20 Claude Sonnet 4.5 agents for implementation
-- 2 Claude Opus 4 agents for architecture and security review
-- Total build time: ~4 hours across 2 development sessions
+- ~35 Claude Sonnet 4.5 agents for implementation
+- 4 Claude Opus 4.6 agents for architecture and security review
+- Total build time: ~6 hours across 3 development sessions
 
 **Key Technologies:**
 - FastAPI, SQLAlchemy, Pydantic
 - LiteLLM, LlamaIndex, Ollama
-- PostgreSQL + pgvector
+- PostgreSQL 16 + pgvector
 - React 19, TypeScript, TailwindCSS
+- Prometheus, Grafana, Loki
 
 **Compliance Frameworks:**
 - Enterprise data classification, export control, application security standards
