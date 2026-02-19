@@ -111,7 +111,7 @@ postgresql:
   enabled: true
   auth:
     username: app
-    password: app_password  # OVERRIDE IN PRODUCTION
+    password: ""  # REQUIRED: Set via --set or external secrets. App will refuse to start with defaults.
     database: enterprise_agents
   primary:
     persistence:
@@ -154,7 +154,7 @@ ollama:
   enabled: false  # Disabled in prod, use vLLM instead
   image:
     repository: ollama/ollama
-    tag: latest
+    tag: "0.5.4"
   resources:
     requests:
       memory: "4Gi"
@@ -169,7 +169,7 @@ vllm:
   gpuCount: 2
   image:
     repository: vllm/vllm-openai
-    tag: latest
+    tag: "v0.6.6.post1"
   resources:
     requests:
       memory: "32Gi"
@@ -183,7 +183,7 @@ litellm:
   port: 4000
   image:
     repository: ghcr.io/berriai/litellm
-    tag: main-latest
+    tag: "main-v1.56.4"
   resources:
     requests:
       memory: "256Mi"
@@ -248,15 +248,23 @@ config:
 # Secrets (reference external secrets in production)
 secrets:
   # CRITICAL: Override these in production
-  # Recommended: Use external-secrets or sealed-secrets
   # REQUIRED: All secrets must be overridden via --set or external-secrets
   secretKey: ""       # REQUIRED: --set secrets.secretKey=<random-64-char>
   devJwtSecret: ""    # Only needed for non-prod environments
   litellmApiKey: ""   # REQUIRED: --set secrets.litellmApiKey=<key>
 
-  # External secret reference (alternative to inline values)
-  # useExternalSecret: true
-  # externalSecretName: enterprise-agent-platform-secrets
+  # External Secrets Operator integration (recommended for production)
+  # When enabled, ExternalSecret + SecretStore CRDs are created instead of plain Secret
+  useExternalSecret: false
+  externalSecret:
+    provider: "azure-keyvault"
+    vaultUrl: ""        # REQUIRED when useExternalSecret=true (e.g. https://myvault.vault.azure.net)
+    tenantId: ""        # Azure AD tenant ID
+    refreshInterval: "1h"
+    serviceAccountRef: "external-secrets-sa"
+    # serviceAccountNamespace: ""  # Only if SA is in a different namespace
+    # storeName: ""      # Override SecretStore name (default: <release>-azure-kv)
+    # storeKind: "SecretStore"  # or "ClusterSecretStore"
 
 # Horizontal Pod Autoscaler
 autoscaling:

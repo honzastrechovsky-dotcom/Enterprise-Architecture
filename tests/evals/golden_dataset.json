@@ -1,0 +1,502 @@
+[
+  {
+    "id": "GD-001",
+    "query": "What is the step-by-step procedure for changing over the SMT pick-and-place machine from PCB model AX-7200 to AX-7500?",
+    "expected_specialist": "procedure_expert",
+    "expected_keywords": ["changeover", "pick-and-place", "feeder", "nozzle", "program", "verification"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "simple",
+    "category": "procedure",
+    "verified_answer_summary": "Should provide numbered steps for SMT line changeover including feeder swap, nozzle selection, program load, first-article inspection, and supervisor sign-off."
+  },
+  {
+    "id": "GD-002",
+    "query": "What PPE is required before entering the electroplating area in Building 4?",
+    "expected_specialist": "procedure_expert",
+    "expected_keywords": ["PPE", "goggles", "gloves", "apron", "respirator", "electroplating", "chemical"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "simple",
+    "category": "procedure",
+    "verified_answer_summary": "Should list required PPE items (chemical-resistant gloves, splash goggles, rubber apron, respirator) and reference the applicable safety SOP for the electroplating zone."
+  },
+  {
+    "id": "GD-003",
+    "query": "Walk me through the lockout/tagout procedure for the hydraulic press HP-305 before maintenance.",
+    "expected_specialist": "procedure_expert",
+    "expected_keywords": ["lockout", "tagout", "LOTO", "energy", "isolation", "hydraulic", "zero energy", "verification"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "medium",
+    "category": "procedure",
+    "verified_answer_summary": "Should provide complete LOTO sequence: notify affected personnel, shut down equipment, isolate energy sources (electrical and hydraulic), apply locks/tags, verify zero energy state, and document completion."
+  },
+  {
+    "id": "GD-004",
+    "query": "What is the emergency spill response procedure for the chemical storage area near line 12?",
+    "expected_specialist": "procedure_expert",
+    "expected_keywords": ["spill", "containment", "SDS", "evacuation", "absorbent", "notification", "emergency"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "medium",
+    "category": "procedure",
+    "verified_answer_summary": "Should detail spill response steps: evacuate area, don PPE, contain spill with absorbent materials, reference SDS for chemical, notify EHS, clean up per procedure, and document incident."
+  },
+  {
+    "id": "GD-005",
+    "query": "Compare the solder paste application procedure between SOP-2044 revision C and the new revision D. What changed?",
+    "expected_specialist": "procedure_expert",
+    "expected_keywords": ["solder paste", "stencil", "revision", "change", "comparison", "SOP-2044", "aperture"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "complex",
+    "category": "procedure",
+    "verified_answer_summary": "Should identify specific changes between revisions such as updated stencil cleaning frequency, modified squeegee pressure settings, new aperture reduction ratios, or changed inspection criteria."
+  },
+  {
+    "id": "GD-006",
+    "query": "What are the prerequisites and qualification requirements before an operator can run the wave solder machine WS-110?",
+    "expected_specialist": "procedure_expert",
+    "expected_keywords": ["qualification", "training", "certification", "wave solder", "operator", "prerequisite"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "simple",
+    "category": "procedure",
+    "verified_answer_summary": "Should list operator training requirements, certification steps, required competency demonstrations, and any prerequisite courses before running wave solder equipment."
+  },
+  {
+    "id": "GD-007",
+    "query": "Explain the procedure for calibrating the coordinate measuring machine CMM-02 including the frequency and acceptance criteria.",
+    "expected_specialist": "procedure_expert",
+    "expected_keywords": ["calibration", "CMM", "probe", "master artifact", "tolerance", "frequency", "traceability"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "medium",
+    "category": "procedure",
+    "verified_answer_summary": "Should describe CMM calibration procedure: probe qualification, master artifact measurement, acceptance criteria thresholds, calibration frequency, and NIST traceability requirements."
+  },
+  {
+    "id": "GD-008",
+    "query": "We need to do a controlled shutdown of the reflow oven RF-201 for weekend maintenance. What is the correct sequence?",
+    "expected_specialist": "procedure_expert",
+    "expected_keywords": ["shutdown", "reflow", "cool-down", "zone", "nitrogen", "conveyor", "sequence"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "medium",
+    "category": "procedure",
+    "verified_answer_summary": "Should provide ordered shutdown sequence: clear boards from oven, reduce zone temperatures, stop conveyor, shut off nitrogen flow, follow cool-down profile, and power-down steps."
+  },
+  {
+    "id": "GD-009",
+    "query": "What is the deviation handling process if an in-process inspection finds parts outside tolerance on CNC cell MC-440? Include escalation paths.",
+    "expected_specialist": "procedure_expert",
+    "expected_keywords": ["deviation", "nonconformance", "quarantine", "escalation", "disposition", "NCR", "tolerance"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "complex",
+    "category": "procedure",
+    "verified_answer_summary": "Should describe deviation workflow: stop production, quarantine suspect parts, initiate NCR, notify quality and engineering, determine disposition (rework/scrap/use-as-is), escalation to plant manager if batch-level impact."
+  },
+  {
+    "id": "GD-010",
+    "query": "How do we handle the incoming inspection procedure for supplier-delivered PCB substrates from vendor Megatron Electronics, including the AQL sampling plan?",
+    "expected_specialist": "procedure_expert",
+    "expected_keywords": ["incoming inspection", "AQL", "sampling", "PCB", "substrate", "acceptance", "visual", "dimensional"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "complex",
+    "category": "procedure",
+    "verified_answer_summary": "Should detail incoming inspection process: lot identification, AQL sampling plan (level, sample size), visual inspection criteria, dimensional checks, test coupons if applicable, accept/reject decision, and documentation requirements."
+  },
+  {
+    "id": "GD-011",
+    "query": "What is the current Cpk for the bore diameter on part number PN-88431 from CNC cell MC-440 over the last 30 days?",
+    "expected_specialist": "quality_inspector",
+    "expected_keywords": ["Cpk", "bore", "diameter", "PN-88431", "MC-440", "process capability", "specification"],
+    "expected_data_sources": ["rag", "mes"],
+    "difficulty": "medium",
+    "category": "quality",
+    "verified_answer_summary": "Should retrieve measurement data, calculate Cpk value, compare against minimum threshold (typically 1.33), and indicate whether the process is capable with specification limits shown."
+  },
+  {
+    "id": "GD-012",
+    "query": "Show me the top 5 defect types by Pareto for SMT line 3 this month.",
+    "expected_specialist": "quality_inspector",
+    "expected_keywords": ["Pareto", "defect", "SMT", "solder bridge", "tombstone", "missing component", "frequency"],
+    "expected_data_sources": ["rag", "mes"],
+    "difficulty": "medium",
+    "category": "quality",
+    "verified_answer_summary": "Should present a ranked list of defect types (e.g., solder bridges, tombstones, insufficient solder, missing components, polarity errors) with counts and cumulative percentages."
+  },
+  {
+    "id": "GD-013",
+    "query": "Are there any SPC out-of-control signals on the torque measurement for assembly station AS-220 in the last 7 days?",
+    "expected_specialist": "quality_inspector",
+    "expected_keywords": ["SPC", "out-of-control", "torque", "Western Electric", "control chart", "rule violation", "AS-220"],
+    "expected_data_sources": ["rag", "mes"],
+    "difficulty": "medium",
+    "category": "quality",
+    "verified_answer_summary": "Should analyze control chart data, check Western Electric rules (runs, trends, points beyond control limits), and report any violations with timestamps and recommended actions."
+  },
+  {
+    "id": "GD-014",
+    "query": "What was the first-pass yield for production order PO-2026-1547 on the final test station?",
+    "expected_specialist": "quality_inspector",
+    "expected_keywords": ["first-pass yield", "FPY", "PO-2026-1547", "final test", "pass", "fail", "percentage"],
+    "expected_data_sources": ["mes", "sap"],
+    "difficulty": "simple",
+    "category": "quality",
+    "verified_answer_summary": "Should return FPY percentage, total units tested, units passed on first attempt, and comparison to target yield for that product."
+  },
+  {
+    "id": "GD-015",
+    "query": "Analyze the scrap rate trend for part PN-55210 across all production lines over the last quarter. Is it improving or degrading?",
+    "expected_specialist": "quality_inspector",
+    "expected_keywords": ["scrap rate", "trend", "PN-55210", "quarter", "improving", "degrading", "root cause"],
+    "expected_data_sources": ["rag", "mes", "sap"],
+    "difficulty": "complex",
+    "category": "quality",
+    "verified_answer_summary": "Should present scrap rate data over time, identify trend direction with statistical basis, break down by production line if patterns differ, and suggest possible root causes for any degradation."
+  },
+  {
+    "id": "GD-016",
+    "query": "What are the specification limits and current measurements for the surface roughness check on ground shaft part GS-3300?",
+    "expected_specialist": "quality_inspector",
+    "expected_keywords": ["surface roughness", "Ra", "specification", "limits", "GS-3300", "measurement", "grinding"],
+    "expected_data_sources": ["rag", "mes"],
+    "difficulty": "simple",
+    "category": "quality",
+    "verified_answer_summary": "Should provide specification limits (e.g., Ra <= 0.8 um), recent measurement values, and in-spec/out-of-spec status for the ground shaft surface finish."
+  },
+  {
+    "id": "GD-017",
+    "query": "Generate a quality summary report for customer audit preparation covering line 5 defect metrics, Cpk values, and corrective actions from the last 6 months.",
+    "expected_specialist": "quality_inspector",
+    "expected_keywords": ["audit", "summary", "defect", "Cpk", "corrective action", "CAPA", "customer", "line 5"],
+    "expected_data_sources": ["rag", "mes", "sap"],
+    "difficulty": "complex",
+    "category": "quality",
+    "verified_answer_summary": "Should compile defect rates by type, key Cpk metrics for critical dimensions, open and closed CAPAs, trend analysis, and overall quality performance summary suitable for customer audit review."
+  },
+  {
+    "id": "GD-018",
+    "query": "Has the supplier quality rating for Kyoto Precision Components changed after the last incoming inspection lot rejection?",
+    "expected_specialist": "quality_inspector",
+    "expected_keywords": ["supplier quality", "rating", "incoming inspection", "rejection", "lot", "Kyoto Precision"],
+    "expected_data_sources": ["rag", "sap"],
+    "difficulty": "medium",
+    "category": "quality",
+    "verified_answer_summary": "Should show supplier quality score before and after the rejection event, the lot rejection details, any corrective actions requested, and updated supplier rating status."
+  },
+  {
+    "id": "GD-019",
+    "query": "Compare the defect density between the lead-free and leaded solder processes for board assembly BRD-4401.",
+    "expected_specialist": "quality_inspector",
+    "expected_keywords": ["defect density", "lead-free", "leaded", "solder", "comparison", "BRD-4401", "DPMO"],
+    "expected_data_sources": ["rag", "mes"],
+    "difficulty": "complex",
+    "category": "quality",
+    "verified_answer_summary": "Should present DPMO or DPU for both solder processes, statistical comparison, identify which process performs better, and note any specific defect types that differ between the two."
+  },
+  {
+    "id": "GD-020",
+    "query": "Is the X-ray inspection machine XI-01 calibration still valid? When is the next calibration due?",
+    "expected_specialist": "quality_inspector",
+    "expected_keywords": ["calibration", "X-ray", "XI-01", "valid", "due date", "certificate", "expiration"],
+    "expected_data_sources": ["rag", "sap"],
+    "difficulty": "simple",
+    "category": "quality",
+    "verified_answer_summary": "Should confirm calibration status (valid/expired), last calibration date, next due date, and calibration certificate reference number."
+  },
+  {
+    "id": "GD-021",
+    "query": "The hydraulic press HP-305 is making an unusual grinding noise during the downstroke. What are the likely causes and troubleshooting steps?",
+    "expected_specialist": "maintenance_advisor",
+    "expected_keywords": ["hydraulic", "grinding noise", "bearing", "pump", "valve", "troubleshooting", "HP-305"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "medium",
+    "category": "maintenance",
+    "verified_answer_summary": "Should provide differential diagnosis: worn bearings, low hydraulic fluid, contaminated fluid, failing pump, misaligned ram. Include troubleshooting sequence from least to most invasive checks."
+  },
+  {
+    "id": "GD-022",
+    "query": "What is the preventive maintenance schedule for the 6-axis robot RB-104 on welding cell WC-03?",
+    "expected_specialist": "maintenance_advisor",
+    "expected_keywords": ["preventive maintenance", "schedule", "robot", "RB-104", "lubrication", "servo", "backup", "calibration"],
+    "expected_data_sources": ["rag", "sap"],
+    "difficulty": "simple",
+    "category": "maintenance",
+    "verified_answer_summary": "Should list PM tasks by frequency (daily, weekly, monthly, annual): lubrication points, servo motor checks, cable harness inspection, controller backup, TCP calibration, and reducer oil changes."
+  },
+  {
+    "id": "GD-023",
+    "query": "Show me the maintenance history for conveyor CV-210 over the past 12 months. Are there recurring failures?",
+    "expected_specialist": "maintenance_advisor",
+    "expected_keywords": ["maintenance history", "conveyor", "CV-210", "recurring", "failure", "work order", "MTBF"],
+    "expected_data_sources": ["sap", "mes"],
+    "difficulty": "medium",
+    "category": "maintenance",
+    "verified_answer_summary": "Should present chronological list of work orders, identify recurring failure patterns (e.g., belt alignment, motor overheating), calculate MTBF, and recommend corrective actions for repeat issues."
+  },
+  {
+    "id": "GD-024",
+    "query": "Draft a corrective maintenance work order for replacing the spindle motor on CNC machine MC-440.",
+    "expected_specialist": "maintenance_advisor",
+    "expected_keywords": ["work order", "spindle", "motor", "replacement", "MC-440", "LOTO", "parts", "skills"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "medium",
+    "category": "maintenance",
+    "verified_answer_summary": "Should produce a formatted work order with equipment tag, priority, issue description, LOTO requirements, PPE, step-by-step replacement procedure, required parts with part numbers, estimated time, and required technician certifications."
+  },
+  {
+    "id": "GD-025",
+    "query": "What spare parts should we keep in stock for the reflow oven RF-201 based on failure history and manufacturer recommendations?",
+    "expected_specialist": "maintenance_advisor",
+    "expected_keywords": ["spare parts", "reflow", "RF-201", "heater", "thermocouple", "belt", "inventory", "critical spares"],
+    "expected_data_sources": ["rag", "sap"],
+    "difficulty": "complex",
+    "category": "maintenance",
+    "verified_answer_summary": "Should combine manufacturer recommended spares with actual failure history data to produce a prioritized spare parts list including heating elements, thermocouples, conveyor belts, blower motors, and control boards with recommended stock quantities."
+  },
+  {
+    "id": "GD-026",
+    "query": "The chiller unit CH-08 supplying the laser cutting station is showing a high-pressure alarm. What should we check first?",
+    "expected_specialist": "maintenance_advisor",
+    "expected_keywords": ["chiller", "high pressure", "alarm", "condenser", "refrigerant", "filter", "airflow", "CH-08"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "simple",
+    "category": "maintenance",
+    "verified_answer_summary": "Should provide immediate troubleshooting checklist: check condenser coils for blockage, verify airflow, check refrigerant levels, inspect water flow, check filter status, and verify ambient temperature conditions."
+  },
+  {
+    "id": "GD-027",
+    "query": "Interpret the P&ID diagram for the cooling water system serving production hall B. Identify the critical control valves and interlocks.",
+    "expected_specialist": "maintenance_advisor",
+    "expected_keywords": ["P&ID", "cooling water", "control valve", "interlock", "flow", "temperature", "safety"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "complex",
+    "category": "maintenance",
+    "verified_answer_summary": "Should identify key P&ID components: pumps, control valves (with tag numbers), temperature and flow transmitters, safety interlocks (high-temp shutdown, low-flow alarm), and explain the control logic for the cooling water circuit."
+  },
+  {
+    "id": "GD-028",
+    "query": "We need to plan a major overhaul of the paint booth PB-02 during the August shutdown. What are the typical tasks and estimated downtime?",
+    "expected_specialist": "maintenance_advisor",
+    "expected_keywords": ["overhaul", "paint booth", "shutdown", "downtime", "filter", "exhaust", "inspection", "PB-02"],
+    "expected_data_sources": ["rag", "sap"],
+    "difficulty": "complex",
+    "category": "maintenance",
+    "verified_answer_summary": "Should outline major overhaul scope: replace all filters, inspect/repair exhaust system, clean ductwork, recalibrate airflow sensors, inspect fire suppression, test lighting, repaint interior walls, with estimated duration for each task."
+  },
+  {
+    "id": "GD-029",
+    "query": "What is the vibration analysis trend for the main drive motor on press line PL-06? Is it approaching alarm threshold?",
+    "expected_specialist": "maintenance_advisor",
+    "expected_keywords": ["vibration", "analysis", "trend", "motor", "PL-06", "threshold", "bearing", "frequency"],
+    "expected_data_sources": ["mes", "rag"],
+    "difficulty": "medium",
+    "category": "maintenance",
+    "verified_answer_summary": "Should present vibration readings over time (velocity, acceleration, displacement), compare to ISO alarm thresholds, identify dominant frequency components, and assess bearing condition with recommendation on timing for intervention."
+  },
+  {
+    "id": "GD-030",
+    "query": "The PLC on packaging line PK-15 is throwing fault code E-4472. What does it mean and how do we clear it?",
+    "expected_specialist": "maintenance_advisor",
+    "expected_keywords": ["PLC", "fault code", "E-4472", "packaging", "PK-15", "clear", "reset", "diagnostic"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "simple",
+    "category": "maintenance",
+    "verified_answer_summary": "Should decode the fault code (e.g., servo axis communication error), provide immediate steps to diagnose the root cause, explain the reset procedure, and list conditions that must be met before restart."
+  },
+  {
+    "id": "GD-031",
+    "query": "What is the current inventory level for raw material RM-1120 (aluminum alloy 6061-T6 bar stock) across all warehouses?",
+    "expected_specialist": "data_analyst",
+    "expected_keywords": ["inventory", "RM-1120", "6061-T6", "warehouse", "stock", "quantity", "SAP"],
+    "expected_data_sources": ["sap"],
+    "difficulty": "simple",
+    "category": "data",
+    "verified_answer_summary": "Should query SAP material master and inventory tables to return current stock quantities by storage location, unrestricted vs. blocked stock, and reorder point status."
+  },
+  {
+    "id": "GD-032",
+    "query": "Pull the production order status for all open orders on work center WC-ASSY-01 and show their planned vs. actual completion dates.",
+    "expected_specialist": "data_analyst",
+    "expected_keywords": ["production order", "WC-ASSY-01", "status", "planned", "actual", "completion", "schedule"],
+    "expected_data_sources": ["sap"],
+    "difficulty": "medium",
+    "category": "data",
+    "verified_answer_summary": "Should return a table of open production orders with order number, material, planned start/end, actual start, current status (released/in process/partially confirmed), and any schedule deviations."
+  },
+  {
+    "id": "GD-033",
+    "query": "What was the OEE for stamping press line PL-06 last week broken down by availability, performance, and quality?",
+    "expected_specialist": "data_analyst",
+    "expected_keywords": ["OEE", "availability", "performance", "quality", "PL-06", "stamping", "downtime"],
+    "expected_data_sources": ["mes", "sap"],
+    "difficulty": "medium",
+    "category": "data",
+    "verified_answer_summary": "Should calculate OEE = Availability x Performance x Quality, show each component with the underlying data (planned time, downtime, ideal cycle time, actual output, good parts vs. total), and compare to target."
+  },
+  {
+    "id": "GD-034",
+    "query": "Show me the cost breakdown for production order PO-2026-0892 including material, labor, and overhead variances against standard cost.",
+    "expected_specialist": "data_analyst",
+    "expected_keywords": ["cost", "variance", "material", "labor", "overhead", "standard", "PO-2026-0892"],
+    "expected_data_sources": ["sap"],
+    "difficulty": "complex",
+    "category": "data",
+    "verified_answer_summary": "Should present planned vs. actual costs by category (direct material, direct labor, machine overhead, production overhead), calculate variances, and identify the largest cost drivers."
+  },
+  {
+    "id": "GD-035",
+    "query": "What is the on-time delivery rate for finished goods shipped to customer Denso Corporation over the last 6 months?",
+    "expected_specialist": "data_analyst",
+    "expected_keywords": ["on-time delivery", "OTD", "Denso", "shipment", "customer", "rate", "trend"],
+    "expected_data_sources": ["sap"],
+    "difficulty": "medium",
+    "category": "data",
+    "verified_answer_summary": "Should calculate OTD percentage per month, show total shipments vs. late shipments, identify any patterns in late deliveries, and compare against contractual SLA targets."
+  },
+  {
+    "id": "GD-036",
+    "query": "Calculate the total energy consumption in kWh for production hall A during January 2026 and compare it to December 2025.",
+    "expected_specialist": "data_analyst",
+    "expected_keywords": ["energy", "kWh", "consumption", "comparison", "January", "December", "hall A"],
+    "expected_data_sources": ["mes", "sap"],
+    "difficulty": "medium",
+    "category": "data",
+    "verified_answer_summary": "Should retrieve energy meter data for both months, calculate totals, show percentage change, and normalize for production volume differences if data is available."
+  },
+  {
+    "id": "GD-037",
+    "query": "What are the top 10 materials by consumption value in cost center CC-4500 (machining department) year-to-date?",
+    "expected_specialist": "data_analyst",
+    "expected_keywords": ["material", "consumption", "cost center", "CC-4500", "value", "top 10", "machining"],
+    "expected_data_sources": ["sap"],
+    "difficulty": "simple",
+    "category": "data",
+    "verified_answer_summary": "Should produce a ranked list of materials by total consumption value with material numbers, descriptions, quantities consumed, unit costs, and total value year-to-date."
+  },
+  {
+    "id": "GD-038",
+    "query": "Correlate the downtime events on injection molding machine IM-202 with the scrap rate for part PN-77103 over the past quarter. Is there a relationship?",
+    "expected_specialist": "data_analyst",
+    "expected_keywords": ["correlation", "downtime", "scrap rate", "injection molding", "IM-202", "PN-77103", "relationship"],
+    "expected_data_sources": ["mes", "sap"],
+    "difficulty": "complex",
+    "category": "data",
+    "verified_answer_summary": "Should cross-reference downtime logs with scrap data, perform correlation analysis, identify if scrap rate increases after restart events, and quantify the relationship with supporting data."
+  },
+  {
+    "id": "GD-039",
+    "query": "What is the cycle time distribution for the final assembly station AS-220 across all three shifts? Is there a significant difference between shifts?",
+    "expected_specialist": "data_analyst",
+    "expected_keywords": ["cycle time", "distribution", "shift", "AS-220", "mean", "standard deviation", "comparison"],
+    "expected_data_sources": ["mes"],
+    "difficulty": "complex",
+    "category": "data",
+    "verified_answer_summary": "Should present cycle time statistics per shift (mean, median, std dev, min, max), perform statistical comparison between shifts, and identify if differences are statistically significant."
+  },
+  {
+    "id": "GD-040",
+    "query": "How many open purchase requisitions are there for plant 1000 with delivery date overdue by more than 5 days?",
+    "expected_specialist": "data_analyst",
+    "expected_keywords": ["purchase requisition", "overdue", "plant 1000", "delivery", "open", "count"],
+    "expected_data_sources": ["sap"],
+    "difficulty": "simple",
+    "category": "data",
+    "verified_answer_summary": "Should query SAP purchase requisitions filtered by plant, open status, and overdue delivery date, returning count and a summary list with PR numbers, materials, and days overdue."
+  },
+  {
+    "id": "GD-041",
+    "query": "Find all documents related to the IATF 16949 audit findings from Q4 2025.",
+    "expected_specialist": "document_analyst",
+    "expected_keywords": ["IATF 16949", "audit", "findings", "Q4 2025", "nonconformance", "corrective action"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "simple",
+    "category": "document",
+    "verified_answer_summary": "Should search document repository for IATF 16949 audit-related documents from Q4 2025, list findings, classify by severity (major/minor), and note corrective action status."
+  },
+  {
+    "id": "GD-042",
+    "query": "Summarize the key changes in the updated Environmental Management System manual EMS-2026-R3.",
+    "expected_specialist": "document_analyst",
+    "expected_keywords": ["summary", "EMS", "environmental", "changes", "revision", "management system"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "medium",
+    "category": "document",
+    "verified_answer_summary": "Should provide a structured summary of revisions: new sections added, modified procedures, updated responsibilities, changed metrics or targets, and effective date of changes."
+  },
+  {
+    "id": "GD-043",
+    "query": "Compare the material specifications in drawing DWG-88431-R5 with the incoming inspection criteria in QC-INC-044. Are they aligned?",
+    "expected_specialist": "document_analyst",
+    "expected_keywords": ["compare", "drawing", "specification", "inspection", "alignment", "discrepancy", "DWG-88431"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "complex",
+    "category": "document",
+    "verified_answer_summary": "Should cross-reference material specs from the drawing (tolerances, material grade, finish) with inspection criteria and identify any misalignments, gaps, or conflicting requirements."
+  },
+  {
+    "id": "GD-044",
+    "query": "What documents reference the supplier Kyoto Precision Components? List them by type.",
+    "expected_specialist": "document_analyst",
+    "expected_keywords": ["supplier", "Kyoto Precision", "documents", "reference", "classification", "type"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "simple",
+    "category": "document",
+    "verified_answer_summary": "Should search across all document types and return a categorized list: quality agreements, purchase specifications, incoming inspection procedures, audit reports, and CAPA records referencing this supplier."
+  },
+  {
+    "id": "GD-045",
+    "query": "Extract all safety-critical warnings and cautions from the operating manual for the laser cutting station LC-07.",
+    "expected_specialist": "document_analyst",
+    "expected_keywords": ["safety", "warning", "caution", "laser", "LC-07", "operating manual", "hazard"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "medium",
+    "category": "document",
+    "verified_answer_summary": "Should extract and list all warnings and cautions from the manual organized by section: laser radiation hazards, electrical safety, fume extraction, fire risk, PPE requirements, and interlock descriptions."
+  },
+  {
+    "id": "GD-046",
+    "query": "Is there a conflict between the chemical handling procedure in SOP-EHS-012 and the process instructions in WI-PLATING-003?",
+    "expected_specialist": "document_analyst",
+    "expected_keywords": ["conflict", "chemical handling", "SOP", "work instruction", "plating", "discrepancy", "compliance"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "complex",
+    "category": "document",
+    "verified_answer_summary": "Should analyze both documents for conflicting instructions regarding chemical handling (concentration limits, PPE requirements, disposal methods, storage conditions) and highlight specific contradictions."
+  },
+  {
+    "id": "GD-047",
+    "query": "Classify all untagged documents uploaded in the last 30 days by department and document type.",
+    "expected_specialist": "document_analyst",
+    "expected_keywords": ["classify", "untagged", "document type", "department", "categorize", "uploaded"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "medium",
+    "category": "document",
+    "verified_answer_summary": "Should identify recently uploaded documents lacking metadata, analyze content to suggest department assignment and document type classification (SOP, work instruction, specification, report, form)."
+  },
+  {
+    "id": "GD-048",
+    "query": "Find all references to ISO 14001 requirements across our document library and check if each requirement has a corresponding procedure.",
+    "expected_specialist": "document_analyst",
+    "expected_keywords": ["ISO 14001", "requirements", "gap analysis", "procedure", "compliance", "coverage"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "complex",
+    "category": "document",
+    "verified_answer_summary": "Should map ISO 14001 clauses to existing procedures, identify gaps where requirements lack documented procedures, and produce a compliance matrix showing coverage status."
+  },
+  {
+    "id": "GD-049",
+    "query": "Summarize the last three management review meeting minutes and highlight recurring action items that are still open.",
+    "expected_specialist": "document_analyst",
+    "expected_keywords": ["management review", "meeting minutes", "action items", "open", "recurring", "summary"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "medium",
+    "category": "document",
+    "verified_answer_summary": "Should summarize key decisions and action items from each meeting, cross-reference to identify repeated open items, and flag overdue actions with responsible owners."
+  },
+  {
+    "id": "GD-050",
+    "query": "Create a document traceability matrix for product family PF-9000 linking customer requirements to design specs to test procedures.",
+    "expected_specialist": "document_analyst",
+    "expected_keywords": ["traceability", "matrix", "requirements", "design", "test", "PF-9000", "linkage"],
+    "expected_data_sources": ["rag"],
+    "difficulty": "complex",
+    "category": "document",
+    "verified_answer_summary": "Should build a requirements traceability matrix: customer requirement -> design specification -> verification test procedure, identifying any requirements without test coverage or orphaned test procedures."
+  }
+]

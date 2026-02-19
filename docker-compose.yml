@@ -85,7 +85,7 @@ services:
   # Vector database for RAG embeddings and relational data
   # ----------------------------------------------------------
   db:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:0.8.0-pg16
     ports:
       - "5432:5432"
     environment:
@@ -115,7 +115,7 @@ services:
   # Distributed rate limiting, caching, and session storage
   # ----------------------------------------------------------
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     ports:
       - "6379:6379"
 
@@ -142,7 +142,7 @@ services:
   # GPU-accelerated model serving for cost-effective local inference
   # ----------------------------------------------------------
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.5.4
     ports:
       - "11434:11434"
 
@@ -180,7 +180,7 @@ services:
   # Unified API for OpenAI, Anthropic, Ollama, etc.
   # ----------------------------------------------------------
   litellm:
-    image: ghcr.io/berriai/litellm:main-latest
+    image: ghcr.io/berriai/litellm:main-v1.56.4
     ports:
       - "4000:4000"
     environment:
@@ -204,7 +204,7 @@ services:
   # Hot-reload enabled for rapid UI development
   # ----------------------------------------------------------
   frontend:
-    image: node:20-alpine
+    image: node:20.11-alpine
     working_dir: /app/frontend
     ports:
       - "5173:5173"

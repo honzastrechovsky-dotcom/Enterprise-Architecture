@@ -1,0 +1,78 @@
+# Enterprise Architecture - Evaluation Configuration
+# Used by eval_runner.py to configure API access, scoring, and LLM judge settings.
+
+api:
+  # Base URL of the Enterprise Architecture API
+  url: "http://localhost:8000"
+  # Tenant ID for eval requests (use a dedicated eval tenant)
+  tenant_id: "00000000-0000-0000-0000-000000000099"
+  # User ID for eval requests
+  user_id: "00000000-0000-0000-0000-000000000099"
+  # API key for authentication (override via --api-key or EVAL_API_KEY env var)
+  api_key: ""
+  # Request timeout in seconds
+  timeout_seconds: 60
+  # Delay between requests to avoid rate limiting (seconds)
+  request_delay_seconds: 1.0
+
+scoring:
+  # Minimum thresholds for PASS verdict
+  thresholds:
+    # Specialist routing must be correct for this % of queries
+    specialist_accuracy_min: 0.85
+    # Average keyword coverage must exceed this %
+    keyword_coverage_min: 0.60
+    # Data source match rate must exceed this %
+    data_source_accuracy_min: 0.70
+    # Average LLM judge score must exceed this (1-5 scale)
+    response_quality_min: 3.5
+    # Overall composite score threshold
+    composite_score_min: 0.75
+
+  # Weights for composite score calculation
+  weights:
+    specialist_match: 0.30
+    keyword_coverage: 0.25
+    data_source_match: 0.20
+    response_quality: 0.25
+
+  # Difficulty multipliers for weighted scoring
+  difficulty_weights:
+    simple: 1.0
+    medium: 1.5
+    complex: 2.0
+
+llm_judge:
+  # Model to use for LLM-as-judge response quality scoring
+  model: "gpt-4o-mini"
+  # Temperature for judge calls (low for consistency)
+  temperature: 0.1
+  # Max tokens for judge response
+  max_tokens: 512
+  # API base URL for judge model (if different from main API)
+  api_base: ""
+  # API key for judge model (override via EVAL_JUDGE_API_KEY env var)
+  api_key: ""
+
+  # Rubric for 1-5 scoring
+  rubric: |
+    Score the agent response on a 1-5 scale:
+
+    5 - Excellent: Comprehensive, accurate, well-structured response that fully addresses
+        the query with appropriate detail, citations, and actionable information.
+    4 - Good: Accurate and relevant response that addresses the main query with adequate
+        detail. Minor gaps in completeness or structure.
+    3 - Acceptable: Response addresses the query but may lack depth, miss some aspects,
+        or have minor inaccuracies. Usable but not ideal.
+    2 - Poor: Response is partially relevant but has significant gaps, inaccuracies,
+        or fails to address key aspects of the query.
+    1 - Failing: Response is irrelevant, incorrect, or fails to meaningfully address
+        the query. May contain hallucinated information.
+
+output:
+  # Default output file for results
+  default_path: "tests/evals/results.json"
+  # Include full response text in results (can be large)
+  include_responses: true
+  # Include reasoning traces in results
+  include_traces: true

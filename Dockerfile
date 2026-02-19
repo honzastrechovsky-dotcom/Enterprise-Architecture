@@ -1,7 +1,7 @@
 # =============================================================================
 # Stage 1: Builder - Install dependencies and build artifacts
 # =============================================================================
-FROM python:3.12-slim AS builder
+FROM python:3.12.8-slim AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -27,7 +27,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
 # =============================================================================
 # Stage 2: Runtime - Minimal production image
 # =============================================================================
-FROM python:3.12-slim AS runtime
+FROM python:3.12.8-slim AS runtime
 
 # OCI Image Specification Labels
 LABEL org.opencontainers.image.title="Enterprise Agent Platform"

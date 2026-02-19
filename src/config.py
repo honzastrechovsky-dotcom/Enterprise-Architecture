@@ -297,15 +297,79 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _validate_production_secrets(self) -> Settings:
-        """Refuse to start in production with default/insecure secrets."""
-        if self.environment == Environment.PROD:
-            _insecure = {"dev-secret-key-not-for-production", "dev-only-jwt-secret-not-for-production"}
-            if self.secret_key.get_secret_value() in _insecure:
-                raise ValueError("SECRET_KEY must be changed from default for production")
-            if self.dev_jwt_secret.get_secret_value() in _insecure:
-                raise ValueError("DEV_JWT_SECRET must be changed from default for production")
-            if self.litellm_api_key.get_secret_value() == "sk-dev-key":
-                raise ValueError("LITELLM_API_KEY must be changed from default for production")
+        """Refuse to start in production with default/insecure secrets.
+
+        Checks SECRET_KEY, DEV_JWT_SECRET, LITELLM_API_KEY, and
+        POSTGRES_PASSWORD (extracted from DATABASE_URL) against known
+        insecure default values.  Any match raises RuntimeError to
+        prevent the application from starting with unsafe credentials.
+        """
+        if self.environment != Environment.PROD:
+            return self
+
+        # Tokens that indicate a secret was never changed from its
+        # development default.  Case-insensitive comparison below.
+        _insecure_tokens: set[str] = {
+            "changeme",
+            "secret",
+            "default",
+            "app_password",
+            "postgres",
+            "password",
+            "test",
+            "dev-secret-key-not-for-production",
+            "dev-only-jwt-secret-not-for-production",
+            "sk-dev-key",
+        }
+
+        errors: list[str] = []
+
+        # -- SECRET_KEY --------------------------------------------------
+        secret_key_val = self.secret_key.get_secret_value().lower()
+        if any(token in secret_key_val for token in _insecure_tokens):
+            errors.append(
+                "SECRET_KEY contains an insecure default value. "
+                "Set a strong, random secret for production."
+            )
+
+        # -- DEV_JWT_SECRET ----------------------------------------------
+        dev_jwt_val = self.dev_jwt_secret.get_secret_value().lower()
+        if any(token in dev_jwt_val for token in _insecure_tokens):
+            errors.append(
+                "DEV_JWT_SECRET contains an insecure default value. "
+                "Set a strong, random secret for production."
+            )
+
+        # -- LITELLM_API_KEY ---------------------------------------------
+        litellm_key_val = self.litellm_api_key.get_secret_value().lower()
+        if any(token in litellm_key_val for token in _insecure_tokens):
+            errors.append(
+                "LITELLM_API_KEY contains an insecure default value. "
+                "Set a real API key for production."
+            )
+
+        # -- POSTGRES_PASSWORD (extracted from DATABASE_URL) -------------
+        # DATABASE_URL format: driver://user:password@host:port/dbname
+        db_url = self.database_url
+        if "@" in db_url and "://" in db_url:
+            try:
+                userinfo = db_url.split("://", 1)[1].split("@", 1)[0]
+                if ":" in userinfo:
+                    pg_password = userinfo.split(":", 1)[1].lower()
+                    if any(token in pg_password for token in _insecure_tokens):
+                        errors.append(
+                            "POSTGRES_PASSWORD (in DATABASE_URL) contains an insecure "
+                            "default value. Set a strong password for production."
+                        )
+            except (IndexError, ValueError):
+                pass  # Malformed URL — let SQLAlchemy handle the error
+
+        if errors:
+            raise RuntimeError(
+                "PRODUCTION STARTUP BLOCKED -- Insecure secrets detected:\n"
+                + "\n".join(f"  - {e}" for e in errors)
+            )
+
         return self
 
     @property

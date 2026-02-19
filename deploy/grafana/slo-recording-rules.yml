@@ -1,0 +1,128 @@
+# SLO/SLI Recording Rules — Enterprise Architecture Platform
+#
+# Recording rules pre-compute SLI values so dashboards and alert rules
+# can query them cheaply. Each rule is named with the sli: prefix.
+#
+# SLO Targets (30-day rolling window):
+#   - Availability:  >= 99.5%  (error budget: 3h 39m / 30 days)
+#   - Latency P99:   <= 2s
+#   - Error Rate:    <= 1%
+
+groups:
+  # -----------------------------------------------------------------------
+  # SLI Recording Rules
+  # -----------------------------------------------------------------------
+  - name: sli_recording_rules
+    interval: 30s
+    rules:
+      # ---- Request Success Rate (inverse of 5xx rate) --------------------
+      - record: sli:request_success_rate:ratio_rate5m
+        expr: >
+          1 - (
+            sum(rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total[5m]))
+          )
+
+      # ---- Request Latency P99 ------------------------------------------
+      - record: sli:request_latency_p99:seconds
+        expr: >
+          histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+
+      # ---- Request Latency P95 (supplementary) --------------------------
+      - record: sli:request_latency_p95:seconds
+        expr: >
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+
+      # ---- Availability (API up target) ----------------------------------
+      - record: sli:availability:ratio_avg5m
+        expr: >
+          avg_over_time(up{job="enterprise-agent-platform"}[5m])
+
+  # -----------------------------------------------------------------------
+  # SLO Burn Rate Alerts
+  #
+  # Multi-window, multi-burn-rate approach (Google SRE handbook):
+  #   - Fast burn (14.4x): 5m window  — catches catastrophic failures
+  #   - Slow burn (6x):    30m window — catches sustained degradation
+  #   - Budget burn (1x):  6h window  — tracks error budget consumption
+  # -----------------------------------------------------------------------
+  - name: slo_burn_rate_alerts
+    interval: 30s
+    rules:
+      # ---- Error Budget: 5m fast burn (14.4x = burns 30-day budget in 2h) ----
+      - record: slo:error_budget_burn_rate:5m
+        expr: >
+          1 - (
+            sum(rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total[5m]))
+          )
+
+      # ---- Error Budget: 30m slow burn -----------------------------------
+      - record: slo:error_budget_burn_rate:30m
+        expr: >
+          1 - (
+            sum(rate(http_requests_total{status=~"5.."}[30m]))
+            /
+            sum(rate(http_requests_total[30m]))
+          )
+
+      # ---- Error Budget: 6h sustained burn --------------------------------
+      - record: slo:error_budget_burn_rate:6h
+        expr: >
+          1 - (
+            sum(rate(http_requests_total{status=~"5.."}[6h]))
+            /
+            sum(rate(http_requests_total[6h]))
+          )
+
+      # ---- SLO Breach Alert: Fast burn + slow burn confirmation -----------
+      - alert: SLOErrorBudgetFastBurn
+        expr: >
+          (1 - slo:error_budget_burn_rate:5m) > (14.4 * 0.005)
+          and
+          (1 - slo:error_budget_burn_rate:30m) > (6 * 0.005)
+        for: 2m
+        labels:
+          severity: critical
+          component: slo
+          platform: enterprise-agent-platform
+        annotations:
+          summary: "SLO error budget burning fast — 30-day budget consumed in ~2h at this rate"
+          description: >
+            Error rate is burning the 30-day error budget at an unsustainable rate.
+            5m burn rate: {{ $value }}. Immediate investigation required.
+          runbook_url: "https://runbooks.internal/slo-error-budget-fast-burn"
+
+      # ---- SLO Breach Alert: Latency P99 exceeds target -------------------
+      - alert: SLOLatencyP99Breach
+        expr: >
+          sli:request_latency_p99:seconds > 2
+        for: 10m
+        labels:
+          severity: warning
+          component: slo
+          platform: enterprise-agent-platform
+        annotations:
+          summary: "SLO breach: P99 latency exceeds 2s target"
+          description: >
+            P99 latency is {{ $value | humanizeDuration }} (SLO target: 2s).
+            Sustained for 10+ minutes.
+          runbook_url: "https://runbooks.internal/slo-latency-breach"
+
+      # ---- SLO Breach Alert: Availability below target --------------------
+      - alert: SLOAvailabilityBreach
+        expr: >
+          sli:availability:ratio_avg5m < 0.995
+        for: 10m
+        labels:
+          severity: critical
+          component: slo
+          platform: enterprise-agent-platform
+        annotations:
+          summary: "SLO breach: Availability below 99.5%"
+          description: >
+            API availability is {{ $value | humanizePercentage }} (SLO target: 99.5%).
+            Sustained for 10+ minutes.
+          runbook_url: "https://runbooks.internal/slo-availability-breach"

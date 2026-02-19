@@ -1,0 +1,149 @@
+# Prometheus Alerting Rules — Enterprise Architecture Platform
+#
+# Alert severity levels:
+#   critical - Immediate response required (pages on-call)
+#   warning  - Investigate within 30 minutes
+#   info     - Review during business hours
+#
+# Naming convention: {Domain}{Condition}
+# All alerts include runbook_url for consistent incident response.
+
+groups:
+  # -----------------------------------------------------------------------
+  # HTTP / Application Layer
+  # -----------------------------------------------------------------------
+  - name: http_alerts
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: >
+          (
+            rate(http_requests_total{status=~"5.."}[5m])
+            /
+            rate(http_requests_total[5m])
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          component: api
+          platform: enterprise-agent-platform
+        annotations:
+          summary: "HTTP 5xx error rate above 1%"
+          description: >
+            The 5xx error rate for {{ $labels.job }} is {{ $value | humanizePercentage }}
+            over the last 5 minutes (threshold: 1%).
+          runbook_url: "https://runbooks.internal/http-high-error-rate"
+
+      - alert: HighP99Latency
+        expr: >
+          histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: critical
+          component: api
+          platform: enterprise-agent-platform
+        annotations:
+          summary: "HTTP P99 latency above 2 seconds"
+          description: >
+            P99 latency for {{ $labels.job }} is {{ $value | humanizeDuration }}
+            (threshold: 2s). Investigate slow endpoints or downstream dependencies.
+          runbook_url: "https://runbooks.internal/http-high-latency"
+
+  # -----------------------------------------------------------------------
+  # Infrastructure / Node-Level
+  # -----------------------------------------------------------------------
+  - name: infrastructure_alerts
+    interval: 60s
+    rules:
+      - alert: DiskSpaceHigh
+        expr: >
+          (node_filesystem_avail_bytes / node_filesystem_size_bytes) < 0.15
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+          platform: enterprise-agent-platform
+        annotations:
+          summary: "Disk space below 15% available"
+          description: >
+            Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} has only
+            {{ $value | humanizePercentage }} available (threshold: 15%).
+          runbook_url: "https://runbooks.internal/disk-space-low"
+
+      - alert: HighCPU
+        expr: >
+          100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+          platform: enterprise-agent-platform
+        annotations:
+          summary: "CPU usage above 90%"
+          description: >
+            Average CPU usage on {{ $labels.instance }} is {{ $value }}%
+            (threshold: 90%). Check for runaway processes or scale horizontally.
+          runbook_url: "https://runbooks.internal/high-cpu"
+
+  # -----------------------------------------------------------------------
+  # Kubernetes / Container Layer
+  # -----------------------------------------------------------------------
+  - name: kubernetes_alerts
+    interval: 60s
+    rules:
+      - alert: OOMKills
+        expr: >
+          increase(kube_pod_container_status_restarts_total[1h]) > 3
+        for: 5m
+        labels:
+          severity: critical
+          component: kubernetes
+          platform: enterprise-agent-platform
+        annotations:
+          summary: "Pod container restarting frequently (possible OOM)"
+          description: >
+            Container {{ $labels.container }} in pod {{ $labels.pod }}
+            (namespace {{ $labels.namespace }}) has restarted {{ $value }} times
+            in the last hour. Likely OOM kills — review memory limits.
+          runbook_url: "https://runbooks.internal/oom-kills"
+
+  # -----------------------------------------------------------------------
+  # LLM / AI Agent Layer
+  # -----------------------------------------------------------------------
+  - name: llm_alerts
+    interval: 60s
+    rules:
+      - alert: LLMHighLatency
+        expr: >
+          histogram_quantile(0.95, rate(llm_request_duration_seconds_bucket[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: llm
+          platform: enterprise-agent-platform
+        annotations:
+          summary: "LLM P95 latency above 10 seconds"
+          description: >
+            LLM request P95 latency for {{ $labels.model }} is {{ $value | humanizeDuration }}
+            (threshold: 10s). Check provider status or consider model routing changes.
+          runbook_url: "https://runbooks.internal/llm-high-latency"
+
+      - alert: AgentEscalationRate
+        expr: >
+          (
+            rate(agent_model_escalations_total[1h])
+            /
+            rate(agent_requests_total[1h])
+          ) > 0.3
+        for: 15m
+        labels:
+          severity: warning
+          component: agent
+          platform: enterprise-agent-platform
+        annotations:
+          summary: "Agent model escalation rate above 30%"
+          description: >
+            Agent escalation rate is {{ $value | humanizePercentage }}
+            (threshold: 30%). High escalation may indicate poor routing or
+            degraded smaller-model performance.
+          runbook_url: "https://runbooks.internal/agent-escalation-rate"

@@ -33,6 +33,12 @@ from src.models.token_budget import (
 )
 from src.models.trace import AgentStep, AgentTrace, StepType, TraceStatus
 from src.models.user import User
+from src.models.monitoring import (
+    AlertSeverity,
+    AlertStatus,
+    AlertThreshold,
+    MonitoringAlert,
+)
 from src.models.write_operation import WriteOperationRecord
 
 __all__ = [
@@ -70,4 +76,8 @@ __all__ = [
     "RoutingDecisionRecord",
     "PlanRecord",
     "WriteOperationRecord",
+    "AlertThreshold",
+    "MonitoringAlert",
+    "AlertSeverity",
+    "AlertStatus",
 ]

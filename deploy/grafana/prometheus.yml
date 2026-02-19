@@ -6,15 +6,17 @@ global:
     environment: production
     platform: enterprise-agent-platform
 
-# Alerting (optional — wire up Alertmanager here when ready)
-# alerting:
-#   alertmanagers:
-#     - static_configs:
-#         - targets: ["alertmanager:9093"]
+# Alerting — routes alerts to Alertmanager for notification dispatch
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+      timeout: 10s
 
-# Rule files — add alert/recording rules here later
-rule_files: []
-  # - /etc/prometheus/rules/*.yml
+# Rule files — alert rules and SLO recording rules
+rule_files:
+  - /etc/prometheus/rules/alert-rules.yml
+  - /etc/prometheus/rules/slo-recording-rules.yml
 
 scrape_configs:
   # ---------------------------------------------------------------------------
