@@ -54,7 +54,7 @@ Unlike generic LLM platforms, this system provides:
 7. **Intelligence Loop** - Agent memory injection, feedback-driven learning, and auto-composition for smarter responses over time
 8. **Persistent User Goals** - Goals span conversations; the platform tracks progress across sessions
 
-Built using a **Sonnet+Opus pooling pattern** (~35 Sonnet agents for implementation, 4 Opus agents for architecture and security review) across 3 development sessions. Opus 4.6 security audit identified and resolved 20 issues including CRITICAL auth bypasses and SQL injection vectors.
+Developed with AI-assisted engineering. Security-audited with comprehensive automated testing (1235+ tests).
 
 ---
 

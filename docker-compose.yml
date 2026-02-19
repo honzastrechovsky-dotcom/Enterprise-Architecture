@@ -20,11 +20,11 @@ services:
       # Application
       - ENVIRONMENT=dev
       - DEBUG=true
-      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-not-for-production}
-      - DEV_JWT_SECRET=${DEV_JWT_SECRET:-dev-only-jwt-secret-not-for-production}
+      - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY in .env}
+      - DEV_JWT_SECRET=${DEV_JWT_SECRET:-}
 
-      # Database (matches config.py defaults)
-      - DATABASE_URL=postgresql+asyncpg://app:app_password@db:5432/enterprise_agents
+      # Database
+      - DATABASE_URL=postgresql+asyncpg://app:${POSTGRES_PASSWORD:?Set in .env}@db:5432/enterprise_agents
       - DB_ECHO_SQL=false
 
       # Redis
@@ -32,7 +32,7 @@ services:
 
       # LiteLLM Proxy (for cloud LLMs via gateway)
       - LITELLM_BASE_URL=http://litellm:4000
-      - LITELLM_API_KEY=${LITELLM_API_KEY:-sk-dev-key}
+      - LITELLM_API_KEY=${LITELLM_API_KEY:?Set in .env}
       - LITELLM_DEFAULT_MODEL=openai/gpt-4o-mini
       - LITELLM_EMBEDDING_MODEL=openai/text-embedding-3-small
 
@@ -90,7 +90,7 @@ services:
       - "5432:5432"
     environment:
       - POSTGRES_USER=app
-      - POSTGRES_PASSWORD=app_password
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set in .env}
       - POSTGRES_DB=enterprise_agents
       # Performance tuning for development
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
@@ -184,7 +184,7 @@ services:
     ports:
       - "4000:4000"
     environment:
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-dev-key}
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:?Set in .env}
       # Add your API keys for cloud providers (optional in dev)
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}

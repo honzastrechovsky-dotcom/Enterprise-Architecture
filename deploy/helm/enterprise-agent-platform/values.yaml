@@ -111,8 +111,8 @@ postgresql:
   enabled: true
   auth:
     username: app
-    password: ""  # REQUIRED: Set via --set or external secrets. App will refuse to start with defaults.
     database: enterprise_agents
+    # Password: Set via --set or external secrets operator
   primary:
     persistence:
       enabled: true
@@ -135,7 +135,7 @@ redis:
   enabled: true
   auth:
     enabled: true
-    password: ""  # REQUIRED: Set via --set redis.auth.password=...
+    # Password: Set via --set or external secrets operator
   master:
     persistence:
       enabled: true
@@ -245,26 +245,11 @@ config:
   otlpEndpoint: "http://opentelemetry-collector:4317"
   enableTelemetry: false
 
-# Secrets (reference external secrets in production)
+# Secrets — managed via external-secrets operator or --set overrides
 secrets:
-  # CRITICAL: Override these in production
-  # REQUIRED: All secrets must be overridden via --set or external-secrets
-  secretKey: ""       # REQUIRED: --set secrets.secretKey=<random-64-char>
-  devJwtSecret: ""    # Only needed for non-prod environments
-  litellmApiKey: ""   # REQUIRED: --set secrets.litellmApiKey=<key>
-
-  # External Secrets Operator integration (recommended for production)
-  # When enabled, ExternalSecret + SecretStore CRDs are created instead of plain Secret
+  # All secrets must be provided at deploy time
+  # Supports: Azure Key Vault, HashiCorp Vault, AWS Secrets Manager
   useExternalSecret: false
-  externalSecret:
-    provider: "azure-keyvault"
-    vaultUrl: ""        # REQUIRED when useExternalSecret=true (e.g. https://myvault.vault.azure.net)
-    tenantId: ""        # Azure AD tenant ID
-    refreshInterval: "1h"
-    serviceAccountRef: "external-secrets-sa"
-    # serviceAccountNamespace: ""  # Only if SA is in a different namespace
-    # storeName: ""      # Override SecretStore name (default: <release>-azure-kv)
-    # storeKind: "SecretStore"  # or "ClusterSecretStore"
 
 # Horizontal Pod Autoscaler
 autoscaling:
